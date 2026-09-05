@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e1a">
+<title>智猪博弈 · 策略实验室</title>
+<style>
+html,body{margin:0;padding:0;background:#05070f;}
+body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+#game-root{width:100%; max-width:520px; align-self:flex-start; -webkit-tap-highlight-color:transparent;}
+</style>
+</head>
+<body>
+<div id="game-root">
+<style>
+#game-root{
+  --bg:#0a0e1a; --panel:#121829; --panel2:#151d31;
+  --line:rgba(120,170,255,.16); --line-strong:rgba(120,180,255,.34);
+  --text:#eaf1ff; --text-soft:#b6c5e8; --text-mut:#7d8fa3;
+  --gold:#e8c86a; --cyan:#7fd8ff; --blue:#5aa8ff;
+  --ok:#7ee0a5; --warn:#ffcf7a; --bad:#ff8a9b;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--text); background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(90,168,255,.16), transparent 60%),
+    radial-gradient(900px 500px at 95% 110%, rgba(232,200,106,.10), transparent 55%),
+    var(--bg);
+  padding:22px; border-radius:20px; position:relative; overflow:hidden;
+  font-size:13px;
+}
+#game-root::before{content:""; position:absolute; inset:0;
+  background:linear-gradient(160deg, rgba(255,255,255,.05), transparent 40%);
+  pointer-events:none;}
+.gr-top{display:flex; align-items:flex-end; justify-content:space-between;
+  padding:0 4px 16px; border-bottom:1px solid var(--line); margin-bottom:18px; position:relative;}
+.gr-title h2{margin:0; font-size:13px; letter-spacing:.06em;
+  background:linear-gradient(90deg,#fff,#bcd4ff); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.gr-title .sub{font-size:13px; letter-spacing:.28em; color:var(--text-mut); text-transform:uppercase;}
+.gr-round{font-size:13px; color:var(--text-soft);} .gr-round b{color:var(--gold); font-size:13px; margin:0 3px;}
+
+.gr-main{display:grid; grid-template-columns:1fr; gap:18px; position:relative;}
+
+.gr-stage{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line);
+  border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:16px; position:relative;}
+.arena{position:relative; height:200px; border-radius:14px; overflow:hidden;
+  background:linear-gradient(180deg, rgba(90,168,255,.06), rgba(10,14,26,.4));
+  border:1px dashed var(--line);}
+.arena .ground{position:absolute; bottom:0; left:0; right:0; height:34px;
+  background:linear-gradient(180deg, transparent, rgba(90,150,255,.08));}
+.trough{position:absolute; left:20px; bottom:24px; width:78px;}
+.trough svg,.pedal svg{width:100%; height:auto; display:block; filter:drop-shadow(0 3px 6px rgba(0,0,0,.3));}
+.pedal{position:absolute; right:24px; bottom:24px; width:66px;}
+.pig{position:absolute; bottom:88px; transition:left .55s cubic-bezier(.22,.9,.3,1.2), opacity .35s, transform .3s; text-align:center;}
+.pig-svg{width:62px; height:50px; display:block; margin:0 auto; filter:drop-shadow(0 4px 8px rgba(0,0,0,.35));}
+.pig-big .pig-svg{width:86px; height:70px;}
+.pig .pig-label{font-size:13px; color:var(--text-soft); display:block; margin-top:4px; letter-spacing:.06em;}
+.pig-big{left:40px;} .pig-small{left:170px;}
+.pig.press{transform:translateY(-5px);}
+.pig.idle{opacity:.6;}
+
+.scores{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.score{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:12px 16px;
+  display:flex; flex-direction:column; gap:9px;}
+.score-top{display:flex; align-items:center; justify-content:space-between;}
+.score-top span{font-size:13px; color:var(--text-soft);} 
+.score-top b{font-size:13px; font-weight:700; transition:transform .3s;} 
+.score-big .score-top b{color:var(--gold);} .score-small .score-top b{color:var(--cyan);}
+.score.pop .score-top b{transform:scale(1.22);}
+.score .g{font-size:13px; margin-left:6px;}
+.bar{height:10px; border-radius:20px; background:rgba(255,255,255,.07); overflow:hidden; position:relative;}
+.bar-fill{height:100%; border-radius:20px; transition:width .5s cubic-bezier(.2,.8,.3,1), background .4s;}
+.bar-fill.ok{background:linear-gradient(90deg,#2a7a4e,var(--ok));}
+.bar-fill.warn{background:linear-gradient(90deg,#7a5e1e,var(--warn));}
+.bar-fill.bad{background:linear-gradient(90deg,#7a1e2a,var(--bad)); animation:pulse 1.1s infinite;}
+.bar-fill.cap{background:linear-gradient(90deg,#1e4a6e,var(--cyan));}
+.bar-fill.cap-low{background:linear-gradient(90deg,#43233a,var(--bad));}
+@keyframes pulse{50%{opacity:.5}}
+.bar-row{display:flex; justify-content:space-between; font-size:13px; color:var(--text-mut);}
+.bar-row b{color:var(--text-soft); font-size:13px;}
+.bar-row .lb{color:var(--cyan);} 
+
+.role-pick{text-align:center;} .role-pick p{color:var(--text-soft); margin:2px 0 14px; font-size:13px;}
+.role-btns{display:flex; gap:14px; justify-content:center;}
+.role-btns button{flex:1; max-width:200px; padding:14px 10px; border-radius:12px; font-size:13px; font-weight:600;
+  color:var(--text); background:linear-gradient(180deg,var(--panel2),#0e1626); border:1px solid var(--line-strong);
+  cursor:pointer; transition:.2s; letter-spacing:.04em;}
+.role-btns button:hover{border-color:var(--blue); box-shadow:0 0 18px rgba(90,168,255,.3); transform:translateY(-2px);}
+.role-btns button[data-role="big"]{border-color:rgba(232,200,106,.4);}
+.role-btns button[data-role="big"]:hover{border-color:var(--gold); box-shadow:0 0 18px rgba(232,200,106,.3);}
+.role-btns button[data-role="small"]{border-color:rgba(127,216,255,.4);}
+.role-btns button[data-role="small"]:hover{border-color:var(--cyan); box-shadow:0 0 18px rgba(127,216,255,.3);}
+
+.intro{text-align:center; padding:16px 8px;}
+.intro-badge{display:inline-block; padding:4px 14px; border-radius:20px; font-size:13px; letter-spacing:.14em; color:var(--warn); border:1px solid rgba(255,207,122,.35); background:rgba(255,207,122,.08); margin-bottom:16px;}
+.intro-title{font-size:13px; margin:0 0 12px; color:var(--text); letter-spacing:.02em;}
+.intro-text{font-size:13px; line-height:1.8; color:var(--text-soft); margin:0 0 20px; text-align:left;}
+.intro-btn{width:100%; padding:15px; border-radius:12px; font-size:13px; font-weight:700; color:var(--text);
+  background:linear-gradient(180deg,#2b3a58,#1c2942); border:1px solid var(--blue); cursor:pointer; transition:.2s; letter-spacing:.1em;}
+.intro-btn:hover{box-shadow:0 0 20px rgba(90,168,255,.4); transform:translateY(-2px);}.entry-group{display:flex; gap:12px; margin-top:8px;}
+.entry-group .intro-btn{flex:1; width:auto; font-size:12px; letter-spacing:.04em;}
+.intro-btn.watch-btn{border-color:var(--cyan); background:linear-gradient(180deg,#1e3a4e,#16283c);}
+.intro-btn.watch-btn:hover{border-color:var(--cyan); box-shadow:0 0 20px rgba(127,216,255,.35);}
+.watch-bar{display:flex; align-items:center; gap:10px; margin-top:6px;}
+.watch-bar button{background:linear-gradient(180deg,#2b3a58,#1c2942); color:var(--text); border:1px solid var(--line-strong); padding:10px 16px; border-radius:8px; font-size:13px; cursor:pointer; transition:.2s; letter-spacing:.04em;}
+.watch-bar button:hover{border-color:var(--cyan); box-shadow:0 0 14px rgba(127,216,255,.3);}
+.watch-insight{background:rgba(232,200,106,.07); border:1px solid rgba(232,200,106,.25); border-radius:12px; padding:12px 14px; font-size:13px; line-height:1.7; color:var(--text-soft); margin-top:10px;}
+.watch-insight b{color:var(--gold);}
+.insight-box{max-height:230px; overflow:auto; margin-top:10px;}
+
+.controls{display:flex; gap:14px;} 
+.act-btn{flex:1; padding:15px 10px; border-radius:12px; font-size:13px; font-weight:600; cursor:pointer; transition:.2s; color:var(--text); letter-spacing:.04em; border:1px solid;}
+.act-btn.press{background:linear-gradient(180deg,#2b3a58,#1c2942); border-color:var(--blue);}
+.act-btn.press:hover{box-shadow:0 0 20px rgba(90,168,255,.4); transform:translateY(-2px);}
+.act-btn.wait{background:linear-gradient(180deg,#3a3324,#2c2718); border-color:var(--gold);}
+.act-btn.wait:hover{box-shadow:0 0 20px rgba(232,200,106,.35); transform:translateY(-2px);}
+.act-btn:disabled{opacity:.4; cursor:not-allowed; box-shadow:none; transform:none;}
+
+.gr-panel{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line);
+  border-radius:16px; padding:16px 18px; display:flex; flex-direction:column; gap:14px;}
+.tabs{display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--line); padding-bottom:10px;}
+.tabs button{background:none; border:none; color:var(--text-mut); font-size:13px; padding:7px 12px; cursor:pointer;
+  border-radius:8px; transition:.2s; letter-spacing:.02em;}
+.tabs button:hover{color:var(--text); background:rgba(255,255,255,.05);}
+.tabs button.active{color:var(--text); background:linear-gradient(180deg, rgba(90,168,255,.18), rgba(90,168,255,.08)); border:1px solid var(--line-strong);}
+.panel-body{flex:1; min-height:250px;}
+.panel-body h4{margin:0 0 8px; font-size:13px; color:var(--gold); letter-spacing:.04em;}
+.panel-body p{font-size:13px; line-height:1.7; color:var(--text-soft); margin:0 0 8px;}
+
+.payoff-table{width:100%; border-collapse:collapse; font-size:13px; margin-top:4px;}
+.payoff-table th,.payoff-table td{padding:9px 6px; text-align:center; border:1px solid var(--line);}
+.payoff-table th{color:var(--text-mut); font-weight:500; background:rgba(255,255,255,.03);}
+.payoff-table thead th, .payoff-table .rowhead{background:rgba(90,168,255,.08); color:var(--text-soft);}
+.payoff-table td{color:var(--text-soft);}
+.payoff-table td b{color:var(--text);}
+.payoff-table .hl{background:rgba(232,200,106,.14); border-color:var(--gold);}
+
+.hist-list{display:flex; flex-direction:column; gap:8px; max-height:250px; overflow:auto;}
+.hist-item{background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:9px; padding:8px 12px; font-size:13px; color:var(--text-soft); display:flex; justify-content:space-between; gap:8px; align-items:center;}
+.hist-item .r{color:var(--text-mut);} 
+.hist-item .tag{font-size:13px; padding:2px 7px; border-radius:20px; background:rgba(90,168,255,.12); color:var(--cyan); border:1px solid rgba(127,216,255,.25);}
+.hist-item .tag.press{background:rgba(90,168,255,.18);} .hist-item .tag.wait{background:rgba(232,200,106,.16); color:var(--gold); border-color:rgba(232,200,106,.3);}
+.hist-empty{color:var(--text-mut); font-size:13px; text-align:center; padding:30px 0;}
+
+.meter{display:flex; flex-direction:column; gap:12px; margin-top:10px;}
+.signal{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--text-soft);}
+.signal .bar{flex:1; height:9px; border-radius:20px; background:rgba(255,255,255,.07); overflow:hidden;}
+.signal .fill{height:100%; border-radius:20px; transition:width .6s cubic-bezier(.2,.8,.3,1);}
+.fill.gold{background:linear-gradient(90deg,#8a6d1e,var(--gold));}
+.fill.blue{background:linear-gradient(90deg,#1e4a6e,var(--cyan));}
+.fill.red{background:linear-gradient(90deg,#6e1e2a,var(--bad));}
+
+.gr-controls-bottom{display:flex; align-items:center; gap:12px; margin-top:16px; padding-top:16px; border-top:1px solid var(--line); position:relative;}
+.opp-label{color:var(--text-mut); font-size:13px; white-space:nowrap;}
+.gr-controls-bottom select{background:var(--panel2); color:var(--text-soft); border:1px solid var(--line-strong); padding:10px 12px; border-radius:8px; font-size:13px; cursor:pointer; flex:1;}
+.gr-controls-bottom button{background:linear-gradient(180deg,#2b3a58,#1c2942); color:var(--text); border:1px solid var(--line-strong); padding:10px 18px; border-radius:8px; font-size:13px; cursor:pointer; transition:.2s;}
+.gr-controls-bottom button:hover{box-shadow:0 0 14px rgba(90,168,255,.3); transform:translateY(-1px);}
+.weather{text-align:center; margin:0 0 10px; padding:8px 14px; border-radius:10px; background:rgba(127,216,255,.08); border:1px solid rgba(127,216,255,.25); color:var(--cyan); letter-spacing:.04em;}
+.challenge{text-align:center; margin:0 0 10px; padding:8px 14px; border-radius:10px; background:rgba(232,200,106,.08); border:1px solid rgba(232,200,106,.3); color:var(--gold); letter-spacing:.04em;}
+.challenge.done{background:rgba(126,224,165,.12); border-color:var(--ok); color:var(--ok);}
+.result-card{position:relative; margin-top:6px; border-radius:16px; overflow:hidden;
+  border:1px solid var(--line-strong);
+  background:linear-gradient(180deg,#141c30,#0e1626);
+  box-shadow:0 10px 34px rgba(0,0,0,.4);}
+.result-card .rc-hero{position:relative; padding:26px 20px 18px; text-align:center;
+  background:radial-gradient(560px 280px at 50% -30%, rgba(232,200,106,.22), transparent 70%),
+             radial-gradient(480px 260px at 50% 120%, rgba(90,168,255,.16), transparent 70%);}
+.result-card .rc-rank{display:inline-flex; align-items:center; justify-content:center; width:74px; height:74px;
+  border-radius:50%; font-size:36px; font-weight:800; margin:0 auto 12px; line-height:1;
+  background:linear-gradient(160deg,#3a3324,#1c2942); border:2px solid var(--gold); color:var(--gold);
+  box-shadow:0 0 32px rgba(232,200,106,.35); letter-spacing:0; animation:rankPop .5s cubic-bezier(.2,.9,.3,1.4);}
+@keyframes rankPop{0%{transform:scale(.4); opacity:0;} 100%{transform:scale(1); opacity:1;}}
+.result-card .rc-rank.S{background:linear-gradient(160deg,#4a3d18,#2a2410); border-color:var(--gold); color:#ffe08a; box-shadow:0 0 40px rgba(232,200,106,.55);}
+.result-card .rc-rank.A{background:linear-gradient(160deg,#1e3a4e,#16283c); border-color:var(--cyan); color:var(--cyan); box-shadow:0 0 32px rgba(127,216,255,.45);}
+.result-card .rc-rank.B{background:linear-gradient(160deg,#2b3a58,#1c2942); border-color:#9fb4d8; color:#cdd9f0;}
+.result-card .rc-rank.C{background:linear-gradient(160deg,#3a2d1e,#241a10); border-color:var(--warn); color:var(--warn); box-shadow:0 0 26px rgba(255,207,122,.32);}
+.result-card .rc-rank.D{background:linear-gradient(160deg,#3a1e28,#241018); border-color:var(--bad); color:var(--bad); box-shadow:0 0 28px rgba(255,138,155,.32);}
+.result-card .rc-title{font-size:21px; font-weight:800; letter-spacing:.04em; margin:0 0 8px;
+  background:linear-gradient(90deg,#fff,#f0d58a); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.result-card .rc-sub{font-size:13px; line-height:1.7; color:var(--text-soft); margin:0 auto; max-width:430px;}
+.result-card .rc-meta{text-align:center; margin-top:12px; font-size:13px; color:var(--text-mut); letter-spacing:.1em;}
+.result-card .rc-body{padding:16px 18px 20px; display:flex; flex-direction:column; gap:14px;}
+.result-card .rc-vs{display:flex; align-items:stretch; gap:10px;}
+.result-card .rc-side{flex:1; border-radius:12px; padding:14px 10px; text-align:center; border:1px solid var(--line); background:rgba(255,255,255,.03);}
+.result-card .rc-side.win{border-color:var(--gold); background:rgba(232,200,106,.08); box-shadow:0 0 20px rgba(232,200,106,.16);}
+.result-card .rc-side.lose{opacity:.72;}
+.result-card .rc-side.me{border-color:var(--cyan); box-shadow:0 0 18px rgba(127,216,255,.22);}
+.result-card .rc-side.me .nm{color:var(--cyan); font-weight:700;}
+.result-card .rc-side .nm{font-size:13px; color:var(--text-mut); margin-bottom:6px; letter-spacing:.06em;}
+.result-card .rc-side .sc{font-size:32px; font-weight:800; line-height:1;}
+.result-card .rc-side.big .sc{color:var(--gold);} .result-card .rc-side.small .sc{color:var(--cyan);}
+.result-card .rc-side .tag{display:inline-block; margin-top:8px; font-size:13px; padding:2px 11px; border-radius:20px;}
+.result-card .rc-side .tag.dead{background:rgba(255,138,155,.15); color:var(--bad); border:1px solid rgba(255,138,155,.3);}
+.result-card .rc-side .tag.alive{background:rgba(126,224,165,.15); color:var(--ok); border:1px solid rgba(126,224,165,.3);}
+.result-card .rc-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+.result-card .rc-stat{background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:10px; padding:10px 6px; text-align:center;}
+.result-card .rc-stat .v{font-size:16px; font-weight:700; color:var(--text);}
+.result-card .rc-stat .k{font-size:13px; color:var(--text-mut); margin-top:3px;}
+.result-card .rc-challenge{padding:10px 14px; border-radius:10px; font-size:13px; text-align:center; letter-spacing:.03em; border:1px solid;}
+.result-card .rc-challenge.done{background:rgba(126,224,165,.1); color:var(--ok); border-color:rgba(126,224,165,.3);}
+.result-card .rc-challenge.fail{background:rgba(255,255,255,.02); color:var(--text-mut); border-color:var(--line);}
+.result-card .rc-insights{display:flex; flex-wrap:wrap; gap:6px; justify-content:center;}
+.result-card .rc-insight{font-size:13px; padding:4px 12px; border-radius:20px; background:rgba(90,168,255,.12); color:var(--cyan); border:1px solid rgba(127,216,255,.25);}
+.result-card .rc-quote{text-align:center; font-size:13px; line-height:1.7; color:var(--text-mut); margin:0; padding:0 4px;}
+.result-card .rc-foot{display:flex; gap:10px;}
+.result-card .rc-foot button{flex:1; min-height:50px;}
+.result-card .rc-sig{text-align:center; font-size:13px; color:var(--text-mut); opacity:.6; letter-spacing:.12em;}
+.watermark{position:absolute; right:14px; bottom:12px; font-size:13px; color:var(--text-mut); opacity:.55; pointer-events:none; letter-spacing:.08em; z-index:1;}
+.role-btns button.active{transform:translateY(-2px);}
+.role-btns button[data-role="big"].active{border-color:var(--gold); box-shadow:0 0 18px rgba(232,200,106,.3);}
+.role-btns button[data-role="small"].active{border-color:var(--cyan); box-shadow:0 0 18px rgba(127,216,255,.3);}
+.dex-badge{margin-left:6px; font-size:13px; color:var(--cyan);}
+.dex-badge.full{color:var(--ok);}
+.dex-list{display:flex; flex-direction:column; gap:10px; max-height:420px; overflow:auto; padding-right:2px;}
+.dex-item{border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:rgba(255,255,255,.03);}
+.dex-item.on{border-color:rgba(232,200,106,.35); background:rgba(232,200,106,.06);}
+.dex-head{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
+.dex-head b{color:var(--gold); font-size:13px; letter-spacing:.02em;}
+.dex-icon{font-size:15px; line-height:1;}
+.dex-item p{font-size:13px; line-height:1.7; color:var(--text-soft); margin:0;}
+.dex-item.off .dex-head b{color:var(--text-mut);}
+.dex-item.off p{color:var(--text-mut);}
+#game-root svg text{font-size:9px !important;}
+.hidden{display:none;}
+@media(max-width:640px){
+  #game-root{padding:14px 12px; border-radius:16px; font-size:15px; -webkit-tap-highlight-color:transparent;}
+  #game-root button{ touch-action:manipulation; }
+  .gr-top{padding:0 2px 12px; margin-bottom:14px;}
+  .gr-title h2{font-size:17px;}
+  .gr-title .sub{font-size:11px; letter-spacing:.16em;}
+  .gr-round{font-size:14px;}
+  .gr-main{gap:14px;}
+  .gr-main>*{min-width:0;}
+  .gr-panel{overflow:hidden;}
+  .gr-stage{padding:14px; gap:14px;}
+  .arena{height:150px;}
+  .trough{left:12px; bottom:16px; width:64px;}
+  .pedal{right:14px; bottom:16px; width:54px;}
+  .pig{bottom:58px;}
+  .pig-svg{width:50px; height:40px;}
+  .pig-big .pig-svg{width:70px; height:58px;}
+  .pig .pig-label{font-size:12px; margin-top:2px;}
+  .scores{gap:10px;}
+  .score{padding:12px; gap:8px;}
+  .act-btn{padding:16px 10px; font-size:16px; min-height:54px;}
+  .role-btns button{padding:16px 10px; font-size:15px; min-height:54px;}
+  .intro-btn{padding:16px; font-size:15px; min-height:54px;}
+  .entry-group .intro-btn{font-size:15px;}
+  .intro-text,.intro-title,.panel-body p,.hist-item,.watch-insight,.dex-item p{font-size:15px;}
+  .result-card .rc-title{font-size:19px;}
+  .result-card .rc-side .sc{font-size:28px;}
+  .result-card .rc-rank{width:64px; height:64px; font-size:30px;}
+  .result-card .rc-sub{font-size:14px;}
+  .tabs{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; gap:4px; padding-bottom:10px;}
+  .tabs button{white-space:nowrap; flex:0 0 auto; font-size:14px; padding:11px 13px;}
+  .payoff-table{font-size:14px;}
+  .payoff-table th,.payoff-table td{padding:10px 5px;}
+  .gr-controls-bottom{flex-direction:column; gap:10px;}
+  .gr-controls-bottom select,.gr-controls-bottom button{width:100%; min-height:50px; font-size:16px;}
+  .watch-bar{flex-wrap:wrap;}
+  .watch-bar button{flex:1; min-height:44px; font-size:14px;}
+  .watermark{font-size:12px; right:10px; bottom:8px;}
+  .hist-list{max-height:200px;}
+  .insight-box{max-height:200px;}
+  .dex-list{max-height:360px;}
+}
+@media(max-width:360px){
+  .arena{height:132px;}
+  .scores{grid-template-columns:1fr 1fr; gap:8px;}
+  .score{padding:10px 8px;}
+  .act-btn{font-size:15px; padding:14px 8px;}
+}
+@media(prefers-reduced-motion:reduce){ *{transition:none!important;} }
+</style>
+
+<div class="gr-top">
+  <div class="gr-title">
+    <h2>智猪博弈</h2>
+    <span class="sub">BOXED PIGS · 体力 × 能力</span>
+  </div>
+  <div class="gr-round">第 <b id="round">0</b> 轮</div>
+</div>
+
+<div class="weather hidden" id="weather"></div>
+<div class="challenge hidden" id="challenge"></div>
+
+<div class="gr-main">
+  <section class="gr-stage">
+    <div class="arena">
+      <div class="ground"></div>
+      <div class="trough">
+        <svg viewBox="0 0 78 30">
+          <path d="M3 5 L75 5 L67 28 L11 28 Z" fill="#2a3550" stroke="#4a6a9e" stroke-width="1.5"/>
+          <path d="M3 5 L75 5 L75 11 L3 11 Z" fill="#31405e"/>
+          <circle cx="22" cy="15" r="4.5" fill="#e8c86a"/>
+          <circle cx="40" cy="16" r="4.5" fill="#c9a23e"/>
+          <circle cx="56" cy="14" r="4" fill="#e8c86a"/>
+          <text x="39" y="26" text-anchor="middle" font-size="9" fill="#7d8fa3">食槽</text>
+        </svg>
+      </div>
+      <div class="pedal">
+        <svg viewBox="0 0 66 30">
+          <rect x="9" y="20" width="48" height="7" rx="3" fill="#31405e" stroke="#4a6a9e" stroke-width="1.5"/>
+          <rect x="26" y="4" width="14" height="13" rx="3" fill="#5a7ab0" stroke="#7fb8ff" stroke-width="1.5"/>
+          <circle cx="33" cy="10.5" r="2.6" fill="#e8c86a"/>
+          <text x="33" y="26" text-anchor="middle" font-size="9" fill="#7d8fa3">踏板</text>
+        </svg>
+      </div>
+      <div class="pig pig-big" id="pig-big">
+        <svg class="pig-svg" viewBox="0 0 84 68">
+          <ellipse cx="41" cy="38" rx="26" ry="20" fill="#e9c96c" stroke="#c9a23e" stroke-width="1.8"/>
+          <path d="M25 22 L20 6 L36 16 Z" fill="#e9c96c" stroke="#c9a23e" stroke-width="1.2"/>
+          <path d="M57 22 L62 6 L46 16 Z" fill="#e9c96c" stroke="#c9a23e" stroke-width="1.2"/>
+          <ellipse cx="63" cy="38" rx="7.5" ry="6.5" fill="#c9a23e"/>
+          <circle cx="60" cy="37" r="1.4" fill="#3a2b12"/>
+          <circle cx="66" cy="37" r="1.4" fill="#3a2b12"/>
+          <circle cx="51" cy="30" r="2.6" fill="#2a2430"/>
+          <rect x="28" y="53" width="7" height="10" rx="3" fill="#e9c96c" stroke="#c9a23e" stroke-width="1.2"/>
+          <rect x="46" y="53" width="7" height="10" rx="3" fill="#e9c96c" stroke="#c9a23e" stroke-width="1.2"/>
+        </svg>
+        <span class="pig-label">大猪</span>
+      </div>
+      <div class="pig pig-small" id="pig-small">
+        <svg class="pig-svg" viewBox="0 0 62 50">
+          <ellipse cx="30" cy="28" rx="21" ry="16" fill="#adc6ec" stroke="#7d9bd0" stroke-width="1.5"/>
+          <path d="M17 15 L13 3 L27 10 Z" fill="#adc6ec" stroke="#7d9bd0" stroke-width="1"/>
+          <path d="M45 15 L49 3 L35 10 Z" fill="#adc6ec" stroke="#7d9bd0" stroke-width="1"/>
+          <ellipse cx="49" cy="28" rx="6.5" ry="5.5" fill="#7d9bd0"/>
+          <circle cx="47" cy="27" r="1.2" fill="#1c2a44"/>
+          <circle cx="51" cy="27" r="1.2" fill="#1c2a44"/>
+          <circle cx="40" cy="22" r="2.2" fill="#2a2430"/>
+          <rect x="20" y="39" width="6" height="8" rx="2.5" fill="#adc6ec" stroke="#7d9bd0" stroke-width="1"/>
+          <rect x="35" y="39" width="6" height="8" rx="2.5" fill="#adc6ec" stroke="#7d9bd0" stroke-width="1"/>
+        </svg>
+        <span class="pig-label">小猪</span>
+      </div>
+    </div>
+
+    <div class="intro" id="intro">
+      <div class="intro-badge">开局引导 · 先听个故事</div>
+      <h3 class="intro-title">两头猪，一头想偷懒</h3>
+      <p class="intro-text">猪圈里有一头大猪、一头小猪。谁去按按钮，谁就得跑一趟——但按下后，食槽会掉吃的。<br><br>问题是：大猪跑得动，小猪却总想偷懒等白食。你要是那头小猪，你会怎么选？<br><br>这其实每天都在你身边发生：团队里，有人埋头干活，有人摸鱼。<br><br>选你的玩法——
+      <div class="entry-group">
+        <button id="intro-play" class="intro-btn">亲自上阵</button>
+        <button id="intro-watch" class="intro-btn watch-btn">旁观对局</button>
+      </div>
+    </div>
+
+    <div class="role-pick hidden" id="role-pick">
+      <p>选择你要扮演的角色</p>
+      <div class="role-btns">
+        <button data-role="big">我是大猪</button>
+        <button data-role="small">我是小猪</button>
+      </div>
+    </div>
+
+    <div class="controls hidden" id="controls">
+    <div class="watch-bar hidden" id="watch-bar">
+      <button id="watch-pause">暂停</button>
+      <button id="watch-resume">继续</button>
+      <button id="watch-again">重看一局</button>
+    </div>
+    <div class="insight-box hidden" id="insight-box"></div>
+      <button id="act-press" class="act-btn press">踩踏板</button>
+      <button id="act-wait" class="act-btn wait">搭便车</button>
+    </div>
+
+    <div class="result-card hidden" id="result-card"></div>
+
+    <div class="scores">
+      <div class="score score-big" id="score-box-big">
+        <div class="score-top"><span>大猪</span><b id="score-big">0</b><span class="g" id="gain-big"></span></div>
+        <div class="bar"><div class="bar-fill ok" id="eng-big" style="width:100%"></div></div>
+        <div class="bar-row"><span>体力</span><b id="eng-big-v">100</b></div>
+        <div class="bar"><div class="bar-fill cap" id="cap-big" style="width:50%"></div></div>
+        <div class="bar-row"><span class="lb">能力</span><b id="cap-big-v">50</b></div>
+      </div>
+      <div class="score score-small" id="score-box-small">
+        <div class="score-top"><span>小猪</span><b id="score-small">0</b><span class="g" id="gain-small"></span></div>
+        <div class="bar"><div class="bar-fill ok" id="eng-small" style="width:100%"></div></div>
+        <div class="bar-row"><span>体力</span><b id="eng-small-v">100</b></div>
+        <div class="bar"><div class="bar-fill cap" id="cap-small" style="width:50%"></div></div>
+        <div class="bar-row"><span class="lb">能力</span><b id="cap-small-v">50</b></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="gr-panel">
+    <div class="tabs" id="tabs">
+      <button data-tab="payoff" class="active">收益矩阵</button>
+      <button data-tab="detail">步骤分析</button>
+      <button data-tab="predict">局势预判</button>
+      <button data-tab="history">历史回放</button>
+      <button data-tab="outcome" id="tab-outcome" disabled>结局解析</button>
+      <button data-tab="dex">洞察图鉴 <span class="dex-badge" id="dex-badge"></span></button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+  </aside>
+</div>
+
+<div class="gr-controls-bottom">
+  <button id="btn-restart">重新开始</button>
+  <label class="opp-label" for="ai-mode">对手</label>
+  <select id="ai-mode">
+    <option value="rational">老谋深算</option>
+    <option value="explore">随心所欲</option>
+    <option value="punish">睚眦必报</option>
+  </select>
+</div>
+<div class="watermark">作者 · 灵魂大宗师</div>
+
+<script>
+(function(){
+  var root=document.getElementById('game-root');
+  if(!root) return;
+  var room=window.PolarisRoom;
+
+  var MATRIX={
+    'press-press':{big:5,small:1},
+    'press-wait':{big:4,small:4},
+    'wait-press':{big:9,small:-1},
+    'wait-wait':{big:0,small:0}
+  };
+
+  function defaultState(){return {mode:'play',role:null,aiMode:'rational',round:0,scores:{big:0,small:0},energy:{big:100,small:100},cap:{big:50,small:50},runBig:0,runSmall:0,history:[],last:null,gameOver:false,winner:null,aiCool:0,weather:null,challenge:null,challengeDone:false,record:null};}
+  var state=null;
+  if(room&&room.getState){ state=room.getState(); if(!state||!state.hasOwnProperty('round')) state=defaultState(); 
+    if(!state.energy){state.energy={big:100,small:100};} if(!state.cap){state.cap={big:50,small:50};} if(state.runBig===undefined){state.runBig=0;state.runSmall=0;} if(state.aiCool===undefined){state.aiCool=0;} if(!state.weather){state.weather=null;} if(!state.challenge){state.challenge=null;} if(state.record===undefined){state.record=null;} }
+  else state=defaultState();
+  state.dexUnlocked=loadDex();
+
+  var $=function(s){return root.querySelector(s);};
+  function save(){ if(room&&room.patchState) room.patchState(state); }
+
+  function setPigPos(){
+    var big=$('#pig-big'), small=$('#pig-small');
+    var bigAct=state.last?state.last.bigAct:null;
+    var smallAct=state.last?state.last.smallAct:null;
+    if(state.round===0||!state.last){ big.style.left='50px'; small.style.left='180px'; return; }
+    big.style.left= bigAct==='press' ? 'calc(100% - 130px)' : '54px';
+    small.style.left= smallAct==='press' ? 'calc(100% - 130px)' : '180px';
+    big.classList.toggle('idle', bigAct!=='press'&&state.history.length>0);
+    small.classList.toggle('idle', smallAct!=='press'&&state.history.length>0);
+  }
+
+  function renderEnergy(){
+    var e=state.energy, c=state.cap;
+    var big=$('#eng-big'), bigV=$('#eng-big-v');
+    var small=$('#eng-small'), smallV=$('#eng-small-v');
+    big.style.width=e.big+'%'; bigV.textContent=Math.round(e.big);
+    small.style.width=e.small+'%'; smallV.textContent=Math.round(e.small);
+    big.className='bar-fill '+(e.big<=0||e.big<=12?'bad':e.big<=30?'warn':'ok');
+    small.className='bar-fill '+(e.small<=0||e.small<=12?'bad':e.small<=30?'warn':'ok');
+    var cb=$('#cap-big'), cbV=$('#cap-big-v');
+    var cs=$('#cap-small'), csV=$('#cap-small-v');
+    cb.style.width=c.big+'%'; cbV.textContent=Math.round(c.big);
+    cs.style.width=c.small+'%'; csV.textContent=Math.round(c.small);
+    cb.className='bar-fill '+(c.big<=25?'cap-low':'cap');
+    cs.className='bar-fill '+(c.small<=25?'cap-low':'cap');
+  }
+
+  function renderScores(){
+    $('#score-big').textContent=state.scores.big;
+    $('#score-small').textContent=state.scores.small;
+    $('#round').textContent=state.round;
+    var bg=$('#gain-big'),sg=$('#gain-small');
+    if(state.last){
+      bg.textContent=(state.last.bigGain>=0?'+':'')+state.last.bigGain; bg.style.color=state.last.bigGain>=0?'var(--ok)':'var(--bad)';
+      sg.textContent=(state.last.smallGain>=0?'+':'')+state.last.smallGain; sg.style.color=state.last.smallGain>=0?'var(--ok)':'var(--bad)';
+    } else { bg.textContent=''; sg.textContent=''; }
+    var bb=$('#score-box-big'),bs=$('#score-box-small');
+    bb.classList.add('pop'); bs.classList.add('pop');
+    setTimeout(function(){bb.classList.remove('pop'); bs.classList.remove('pop');},350);
+    renderEnergy();
+  }
+
+  function aiChoose(forceBig){
+    var aiBig = forceBig===true ? true : (forceBig===false ? false : (state.role==='small'));
+    var m=state.aiMode;
+    var me = aiBig ? state.energy.big : state.energy.small;
+    var playerRecent = state.history.slice(-3);
+    var youPress = playerRecent.filter(function(h){return h.playerAct==='press';}).length;
+    if(me <= 15){
+      if(youPress >= 1) return 'wait';
+      return 'press';
+    }
+    if(m==='rational'){ return aiBig ? 'press' : 'wait'; }
+    if(m==='explore'){ return Math.random()<0.5 ? 'press' : 'wait'; }
+    if(m==='punish'){
+      var con = playerRecent.length>=2 && playerRecent.every(function(h){return h.playerAct==='wait';});
+      if(con && me > 30 && state.aiCool<=0){ state.aiCool=5; return 'wait'; }
+      return aiBig ? 'press' : 'wait';
+    }
+    return aiBig ? 'press' : 'wait';
+  }
+
+  function explain(act){ return act==='press' ? '去踩踏板' : '守在槽边等'; }
+
+  var WEATHERS=[
+    {id:'normal',name:'风平浪静',desc:'一切如常。'},
+    {id:'bounty',name:'丰年',desc:'食物丰收，吃肉恢复+4。'},
+    {id:'scarcity',name:'荒年',desc:'食物紧缺，吃肉恢复-2。'},
+    {id:'energy',name:'酷暑',desc:'体力消耗大，生命消耗+1。'}
+  ];
+  function newWeather(){ return WEATHERS[Math.floor(Math.random()*WEATHERS.length)]; }
+  function updateWeatherUI(){
+    var el=$('#weather'); if(!el) return;
+    if(!state.weather){ el.innerHTML=''; return; }
+    el.innerHTML=state.weather.name+' · '+state.weather.desc;
+  }
+  function setupWeather(){ state.weather=newWeather(); $('#weather').classList.remove('hidden'); updateWeatherUI(); }
+
+  var CHALLENGES=[
+    {id:'survive',text:'撑过 15 轮不倒',check:function(){return state.round>=15;}},
+    {id:'lead',text:'终局时你的收益领先',check:function(){var me=state.role==='big'?state.scores.big:state.scores.small,oth=state.role==='big'?state.scores.small:state.scores.big; return state.gameOver&&me>oth;}},
+    {id:'flip',text:'让大猪先倒下',check:function(){return state.winner==='小猪';}},
+    {id:'pigwin',text:'让小猪先倒下',check:function(){return state.winner==='大猪';}}
+  ];
+  function newChallenge(){ return CHALLENGES[Math.floor(Math.random()*CHALLENGES.length)]; }
+  function updateChallengeUI(){
+    var el=$('#challenge'); if(!el) return;
+    if(!state.challenge){ el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    if(state.challengeDone){ el.classList.add('done'); el.innerHTML='✅ '+state.challenge.text+' —— 达成了！'; }
+    else { el.classList.remove('done'); el.innerHTML='🎯 目标：'+state.challenge.text; }
+  }
+  function setupChallenge(){ state.challenge=newChallenge(); state.challengeDone=false; updateChallengeUI(); }
+
+  function computeGrade(){
+    var gBig=state.scores.big, gSmall=state.scores.small;
+    var fb=state.energy.big<=0, fs=state.energy.small<=0;
+    var winSide = gBig>gSmall ? 'big' : (gSmall>gBig ? 'small' : null);
+    var me = state.role;
+    if(me){
+      var myDead = me==='big' ? fb : fs;
+      var isTie = !winSide;
+      var iWin = winSide===me;
+      if(myDead){
+        if(isTie) return {rank:'B', name:'平局', slogan:'同归于尽，收益也打平'};
+        if(iWin) return {rank:'A', name:'悲壮', slogan:'你倒下了，却赢下了收益'};
+        return {rank:'D', name:'完败', slogan:'你倒下，收益也输了'};
+      } else {
+        if(isTie) return {rank:'B', name:'平局', slogan:'你活下来，但谁也没赢'};
+        if(iWin) return {rank:'S', name:'完胜', slogan:'你活着，还赢了收益'};
+        return {rank:'C', name:'惜败', slogan:'你活着，却输了收益'};
+      }
+    }
+    if(fb&&fs) return {rank:'D', name:'双输', slogan:'同归于尽'};
+    if(!winSide) return {rank:'B', name:'平局', slogan:'功亏一篑'};
+    var winAlive = winSide==='big' ? !fb : !fs;
+    if(winAlive) return {rank:'S', name:'完胜', slogan:'笑到最后'};
+    return {rank:'A', name:'悲壮', slogan:'用命换赢'};
+  }
+
+  function computeScene(){
+    var h=state.history, total=h.length||1;
+    var bigPress=0, smallPress=0;
+    h.forEach(function(x){ if(x.bigAct==='press')bigPress++; if(x.smallAct==='press')smallPress++; });
+    var bigPct=Math.round(bigPress/total*100), smallPct=Math.round(smallPress/total*100);
+    var maxRunB=0,maxRunS=0,rB=0,rS=0;
+    h.forEach(function(x){ rB=x.bigAct==='wait'?rB+1:0; if(rB>maxRunB)maxRunB=rB; rS=x.smallAct==='wait'?rS+1:0; if(rS>maxRunS)maxRunS=rS; });
+    var fallen=state.winner, fb=state.energy.big<=0, fs=state.energy.small<=0;
+    var gBig=state.scores.big, gSmall=state.scores.small;
+    var sceneTitle='', sceneDesc='', insights=[];
+    if(fb&&fs){ sceneTitle='搭便车死锁'; sceneDesc='谁也不肯持续付出，谁都搭别人的便车，最后一起饿垮。'; insights=['交替破局','占优策略的反噬']; }
+    else if(fallen==='大猪'){
+      if(gBig>gSmall && bigPct<40){ sceneTitle='用罢工换来的胜局'; sceneDesc='大猪几乎不劳动，却赢下收益——用“绝不踩”把自己绑死，逼小猪替它扛活。'; insights=['承诺策略']; }
+      else if(bigPct>=60){ sceneTitle='过度付出的牺牲者'; sceneDesc='大猪把大半精力耗在踏板上，供养全场却被持续白嫖，用命换来的收益填不饱别人的胃。'; insights=['劳动者被榨干','错维竞争']; }
+      else if(gBig===gSmall){ sceneTitle='辛苦一场的平局'; sceneDesc='大猪出力最多，收益却被小猪平摊，最后倒在均衡上。'; insights=['交替破局','劳动者被榨干']; }
+      else { sceneTitle='吃力却输了的劳动者'; sceneDesc='大猪明明在踩踏板，收益却被吃掉，还倒在了付出上。'; insights=['劳动者被榨干','错维竞争']; }
+    }
+    else if(fallen==='小猪'){
+      if(smallPct>=60){ sceneTitle='吃力不讨好的追赶者'; sceneDesc='小猪拼命踩踏板却跑得慢、抢不过，成本全砸在自己身上。'; insights=['错维竞争','劳动者的错位']; }
+      else { sceneTitle='白嫖落空的投机者'; sceneDesc='小猪想搭便车却没捞到肉，大猪中途罢工，长期白嫖让它连自救的力气都没了。'; insights=['白嫖退化','占优策略的反噬']; }
+      if(gSmall>gBig) insights.push('生死≠收益');
+    }
+    else { sceneTitle='一场僵局'; sceneDesc='局势陷入拉锯，最终以一方倒下告终。'; insights=['交替破局']; }
+    return { sceneTitle:sceneTitle, sceneDesc:sceneDesc, insights:insights, bigPct:bigPct, smallPct:smallPct, maxRunB:maxRunB, maxRunS:maxRunS };
+  }
+
+  var RESULT_QUOTES={
+    'S':'你赢了——理性加行动，笑到最后。',
+    'A':'倒下不等于输——你用命换来了收益。',
+    'B':'辛苦一场，谁也没赢。',
+    'C':'活着，却输了收益——你到底想赢什么？',
+    'D':'输得彻底——努力用错了战场。'
+  };
+
+  function buildResultCard(){
+    var g=computeGrade();
+    var sc=computeScene();
+    var gBig=state.scores.big, gSmall=state.scores.small;
+    var fb=state.energy.big<=0, fs=state.energy.small<=0;
+    var winSide = gBig>gSmall ? 'big' : (gSmall>gBig ? 'small' : null);
+    function side(cls, name, score, dead){
+      var isMe = state.role===cls;
+      var isWin = winSide===cls;
+      var tag = dead ? '<span class="tag dead">倒下</span>' : '<span class="tag alive">存活</span>';
+      var label = isMe ? '你 · '+name : name;
+      return '<div class="rc-side '+cls+(isMe?' me':'')+(isWin?' win':' lose')+'"><div class="nm">'+label+'</div><div class="sc">'+score+'</div>'+tag+'</div>';
+    }
+    var html='';
+    html+='<div class="rc-hero">';
+    html+='<div class="rc-rank '+g.rank+'">'+g.rank+'</div>';
+    html+='<h3 class="rc-title">'+sc.sceneTitle+'</h3>';
+    html+='<p class="rc-sub">'+sc.sceneDesc+'</p>';
+    html+='<div class="rc-meta">第 '+state.round+' 轮 · '+g.name+' · '+g.slogan+'</div>';
+    html+='</div>';
+    html+='<div class="rc-body">';
+    html+='<div class="rc-vs">'+side('big','大猪',gBig,fb)+side('small','小猪',gSmall,fs)+'</div>';
+    html+='<div class="rc-stats">';
+    html+='<div class="rc-stat"><div class="v">'+state.round+'</div><div class="k">对局轮数</div></div>';
+    html+='<div class="rc-stat"><div class="v">'+sc.bigPct+'%</div><div class="k">大猪踩踏板</div></div>';
+    html+='<div class="rc-stat"><div class="v">'+sc.smallPct+'%</div><div class="k">小猪踩踏板</div></div>';
+    html+='</div>';
+    if(state.challenge){
+      html+='<div class="rc-challenge '+(state.challengeDone?'done':'fail')+'">'+(state.challengeDone?'✅ 挑战达成：':'🎯 挑战未竟：')+state.challenge.text+'</div>';
+    }
+    if(sc.insights.length){
+      var chips='';
+      sc.insights.forEach(function(t){ chips+='<span class="rc-insight">'+t+'</span>'; });
+      html+='<div class="rc-insights">'+chips+'</div>';
+    }
+    html+='<p class="rc-quote">“'+RESULT_QUOTES[g.rank]+'”</p>';
+    html+='<div class="rc-foot"><button id="btn-again" class="act-btn press">再来一局</button></div>';
+    html+='<div class="rc-sig">—— 灵魂大宗师 · 洞察图鉴 '+(state.dexUnlocked||[]).length+'/8 ——</div>';
+    html+='</div>';
+    return html;
+  }
+
+  function applyRound(bigAct,smallAct,bigGain,smallGain){
+    var e=state.energy, c=state.cap;
+    var baseLoss=5+(state.weather&&state.weather.id==='energy'?1:0);
+    var eat=8+(state.weather&&state.weather.id==='bounty'?4:(state.weather&&state.weather.id==='scarcity'?-2:0));
+    if(eat<2) eat=2;
+    e.big-=baseLoss; e.small-=baseLoss;
+    if(bigAct==='press') e.big -= (e.big<=30?16:10);
+    if(smallAct==='press') e.small -= (e.small<=30?16:10);
+    if(bigGain>0) e.big += Math.round(eat * c.big/50);
+    if(smallGain>0) e.small += Math.round(eat * c.small/50);
+    if(bigAct==='press') c.big += 2; else c.big -= 2;
+    if(smallAct==='press') c.small += 2; else c.small -= 2;
+    if(bigAct==='wait' && bigGain<=0) c.big -= 5;
+    if(smallAct==='wait' && smallGain<=0) c.small -= 5;
+    var diff=e.big-e.small;
+    var pull=Math.min(12, Math.abs(diff)*0.15);
+    if(diff>0){ e.big-=pull; e.small+=pull*0.6; }
+    else if(diff<0){ e.small-=pull; e.big+=pull*0.6; }
+    e.big=Math.min(100,Math.max(0,e.big)); e.small=Math.min(100,Math.max(0,e.small));
+    c.big=Math.min(100,Math.max(0,c.big)); c.small=Math.min(100,Math.max(0,c.small));
+  }
+
+  function buildDetail(){
+    var L=state.last; if(!L) return '<h4>步骤分析</h4><p>先选角色，点「踩踏板」或「搭便车」，看这一步双方怎么想。</p>';
+    var bigAct=L.bigAct, smallAct=L.smallAct;
+    var lines=[];
+    lines.push('第 '+L.round+' 轮，你的选择：<b style="color:var(--text)">'+explain(L.playerAct)+'</b>；对手选择：<b style="color:var(--text)">'+explain(L.aiAct)+'</b>。');
+    if(bigAct==='press'&&smallAct==='wait') lines.push('大猪去踩了踏板，跑回来时小猪已经守在槽边。大猪付出劳动，小猪坐享其成。');
+    else if(bigAct==='wait'&&smallAct==='press') lines.push('小猪去踩了踏板，可惜跑得太慢，大猪早早守在槽边把肉都吃光了。小猪这一趟白跑，还亏了成本。');
+    else if(bigAct==='press'&&smallAct==='press') lines.push('两只猪都去踩了，一起跑回槽边。大猪脚程快，先到先吃，站了上风。');
+    else lines.push('谁也没去踩踏板，槽里空空如也——两头猪都饿着。这就是「搭便车失败」的僵局。');
+    var r=MATRIX[bigAct+'-'+smallAct];
+    lines.push('<p style="margin-top:10px;color:var(--text)">本轮净收益：大猪 <b style="color:var(--gold)">'+r.big+'</b>，小猪 <b style="color:var(--cyan)">'+r.small+'</b>。生命消耗 5；踩踏板耗体力（疲劳时更重）、搭便车不耗体力；劳动锻炼能力 +2，白嫖退化能力 -2，白嫖落空再 -5。大猪体力 '+Math.round(state.energy.big)+' · 能力 '+Math.round(state.cap.big)+'；小猪体力 '+Math.round(state.energy.small)+' · 能力 '+Math.round(state.cap.small)+'。</p>');
+    if(state.energy.big<=12||state.energy.small<=12) lines.push('<p style="color:var(--bad)">有猪进入濒危状态——体力不足以再踩踏板，只能等待。再耗下去就要倒下了。</p>');
+    return '<h4>步骤分析</h4>'+lines.map(function(t){return '<p>'+t+'</p>';}).join('');
+  }
+
+  function buildPredict(){
+    var h=state.history;
+    if(h.length<3) return '<h4>局势预判</h4><p>数据还不够，多玩几轮再判断风向（至少 3 轮）。</p>';
+    var recent5=h.slice(-5);
+    var waits=recent5.filter(function(x){return x.playerAct==='wait';}).length;
+    var pW=Math.round(waits/recent5.length*100);
+    var cw=0;
+    for(var i=h.length-1;i>=0;i--){ if(h[i].playerAct==='wait') cw++; else break; }
+    var aiWaitProb;
+    if(state.aiMode==='rational'){ aiWaitProb = (state.role==='big') ? 1 : 0; }
+    else if(state.aiMode==='explore'){ aiWaitProb = 0.5; }
+    else { if(cw>=2) aiWaitProb=0.92; else if(cw===1) aiWaitProb=0.5; else aiWaitProb=0.2; }
+    var risk=Math.round(pW/100 * aiWaitProb * 100);
+    var stable=Math.max(0,100-risk);
+    var me= state.role==='big' ? state.energy.big : state.energy.small;
+    var mcap= state.role==='big' ? state.cap.big : state.cap.small;
+    var html='<h4>局势预判</h4>';
+    html+='<p>你最近搭便车倾向约 <b style="color:var(--text)">'+pW+'%</b>（最近5轮），当前已连续搭便车 <b style="color:var(--text)">'+cw+'</b> 轮。</p>';
+    html+='<div class="meter">';
+    html+='<div class="signal"><span style="width:70px">搭便车倾向</span><div class="bar"><div class="fill gold" style="width:'+pW+'%"></div></div><b style="width:40px">'+pW+'%</b></div>';
+    html+='<div class="signal"><span style="width:70px">局势稳定度</span><div class="bar"><div class="fill blue" style="width:'+stable+'%"></div></div><b style="width:40px">'+stable+'%</b></div>';
+    html+='<div class="signal"><span style="width:70px">双输风险</span><div class="bar"><div class="fill red" style="width:'+risk+'%"></div></div><b style="width:40px">'+risk+'%</b></div>';
+    html+='</div>';
+    html+='<p style="margin-top:12px">你体力 <b style="color:'+(me<=12?'var(--bad)':me<=30?'var(--warn)':'var(--ok)')+'">'+Math.round(me)+'</b>，能力 <b style="color:'+(mcap<=25?'var(--bad)':'var(--cyan)')+'">'+Math.round(mcap)+'</b>。'+(me<=12?' 濒危，已无法踩踏板。':me<=30?' 疲劳，踩踏板更费力。':' 状态尚可。')+(mcap<=25?' 能力退化，恢复效率降低。':'')+'</p>';
+    if(state.aiMode==='punish' && cw>=2) html+='<p style="color:var(--bad)">⚠ 睚眦必报的对手已经盯上你——连续 '+cw+' 轮搭便车，它下一轮很可能也罢工，双输几乎必然。</p>';
+    else if(state.aiMode==='punish' && cw===1) html+='<p style="color:var(--warn)">小心，对手在试探你的节律，再继续搭便车它就要报复了。</p>';
+    else if(risk>=70) html+='<p style="color:var(--bad)">双输风险很高，建议改变策略，别让整局掉进僵局。</p>';
+    else html+='<p style="color:var(--text-soft)">局势仍在拉锯，多观察几轮再决定要不要换打法。</p>';
+    return html;
+  }
+
+  function buildHistory(){
+    var h=state.history;
+    if(!h.length) return '<h4>历史回放</h4><div class="hist-empty">还没有回合记录，开始对局吧。</div>';
+    var html='<h4>历史回放</h4><div class="hist-list">';
+    h.slice().reverse().forEach(function(x){
+      var bigT=x.bigAct==='press'?'<span class="tag press">踩</span>':'<span class="tag wait">等</span>';
+      var smallT=x.smallAct==='press'?'<span class="tag press">踩</span>':'<span class="tag wait">等</span>';
+      html+='<div class="hist-item"><span class="r">第'+x.round+'轮</span><span>大猪 '+bigT+' · 小猪 '+smallT+'</span><span style="color:var(--text)">+'+x.bigGain+'/'+x.smallGain+'</span></div>';
+    });
+    html+='</div>';
+    return html;
+  }
+
+  function buildPayoff(){
+    var L=state.last;
+    var hl='';
+    if(L){hl=L.bigAct+'-'+L.smallAct;}
+    function cell(b,s){var k=b+'-'+s; var r=MATRIX[k]; var cls=(k===hl)?' hl':''; return '<td class="'+cls+'">'+r.big+'<b> / </b>'+r.small+'</td>';}
+    return '<h4>收益矩阵 <span style="color:var(--text-mut)">(大猪 · 小猪)</span></h4>'+
+      '<table class="payoff-table"><thead><tr><th>大猪 \\ 小猪</th><th>踩踏板</th><th>搭便车</th></tr></thead><tbody>'+
+      '<tr><td class="rowhead">踩踏板</td>'+cell('press','press')+cell('press','wait')+'</tr>'+
+      '<tr><td class="rowhead">搭便车</td>'+cell('wait','press')+cell('wait','wait')+'</tr>'+
+      '</tbody></table>'+
+      '<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">'+
+      '<p style="margin:0 0 8px;color:var(--gold);letter-spacing:.04em">规则 · 体力 × 能力</p>'+
+      '<p style="margin:0 0 6px;color:var(--text-soft)"><b style="color:var(--cyan)">能力</b>：决定你吃到肉后的恢复效率（能力 50 = 恢复 8，越高吸收越好）。劳动锻炼能力成长，白嫖使能力退化，白嫖落空使能力严重受损——你越依赖搭便车，越丧失靠自己恢复的能力。</p>'+
+      '<p style="margin:0 0 6px;color:var(--text-soft)"><b style="color:var(--text)">体力规则</b>：生命每轮基础消耗 5；踩踏板消耗体力（≤30 疲劳时加倍），搭便车不消耗体力；吃到肉按能力系数恢复。体力归零即倒下。</p>'+
+      '<p style="margin:0 0 6px;color:var(--text-soft)"><b style="color:var(--text)">领先反噬</b>：体力差距越大，领先方被环境往回拉得越猛，防止一方无限滚雪球，让博弈能收敛走向终局。</p>'+
+      '<p style="margin:0 0 6px;color:var(--text-soft)"><b style="color:var(--text)">状态阈值</b>：体力 ≤30 疲劳、≤12 濒危（无法再踩）、归零倒下。能力 ≤25 进入退化。</p>'+
+      '<p style="margin:0 0 6px;color:var(--text-soft)"><b style="color:var(--text)">对手风格</b>：老谋深算（理性博弈）、随心所欲（随机试探）、睚眦必报（连续搭便车会罢工报复，但体力健康且冷却后才动手）。</p>'+
+      '<p style="margin:0;color:var(--text-soft)"><b style="color:var(--text)">胜负判定</b>：任一体力归零即终局，生存判定 × 收益判定，综合出完胜、惨胜、悲壮、完败。</p>'+
+      '</div>';
+  }
+
+  function buildOutcome(){
+    if(!state.gameOver) return '<h4>结局解析</h4><p>游戏还没结束，无法给出结局分析。</p>';
+    var h=state.history, total=h.length||1;
+    var bigPress=0, smallPress=0;
+    h.forEach(function(x){ if(x.bigAct==='press')bigPress++; if(x.smallAct==='press')smallPress++; });
+    var bigPct=Math.round(bigPress/total*100), smallPct=Math.round(smallPress/total*100);
+    var maxRunB=0,maxRunS=0,rB=0,rS=0;
+    h.forEach(function(x){ rB=x.bigAct==='wait'?rB+1:0; if(rB>maxRunB)maxRunB=rB; rS=x.smallAct==='wait'?rS+1:0; if(rS>maxRunS)maxRunS=rS; });
+    var fallen=state.winner;
+    var fb=state.energy.big<=0, fs=state.energy.small<=0;
+    var gBig=state.scores.big, gSmall=state.scores.small;
+    var capBig=state.cap.big, capSmall=state.cap.small;
+    var html='<h4>结局解析</h4>';
+    var sceneTitle='', sceneDesc='', insights=[];
+    if(fb&&fs){
+      sceneTitle='搭便车死锁';
+      sceneDesc='谁也不肯持续付出，谁都搭别人的便车，最后一起饿垮。这不是某一方的失败，是"合作崩塌"的集体悲剧。';
+      insights.push('交替破局','占优策略的反噬');
+    } else if(fallen==='大猪'){
+      if(gBig>gSmall && bigPct<40){
+        sceneTitle='用罢工换来的胜局';
+        sceneDesc='大猪几乎不劳动，却赢下了收益——它用"绝不踩"把自己绑死，逼小猪替它扛活。这是反向的承诺策略。';
+        insights.push('承诺策略');
+      } else if(bigPct>=60){
+        sceneTitle='过度付出的牺牲者';
+        sceneDesc='大猪把大半精力耗在踩踏板上，供养全场，却被持续白嫖。它用命换来的收益，填不饱别人的胃，也救不回自己的血条。';
+        insights.push('劳动者被榨干','错维竞争');
+      } else if(gBig===gSmall){
+        sceneTitle='辛苦一场的平局';
+        sceneDesc='大猪出力最多，收益却被小猪平摊，最后倒在了均衡上。劳动换不来优势，这就是搭便车的挤压。';
+        insights.push('交替破局','劳动者被榨干');
+      } else {
+        sceneTitle='吃力却输了的劳动者';
+        sceneDesc='大猪明明在踩踏板，可收益被小猪吃掉，还倒在了付出上。这是「能者多劳」最惨的结局。';
+        insights.push('劳动者被榨干','错维竞争');
+      }
+    } else if(fallen==='小猪'){
+      if(smallPct>=60){
+        sceneTitle='吃力不讨好的追赶者';
+        sceneDesc='小猪拼命去踩踏板，却跑得慢、抢不过，成本全砸在自己身上，收益常被大猪吃掉。努力用错了战场，比不努力更惨。';
+        insights.push('错维竞争','劳动者的错位');
+      } else {
+        sceneTitle='白嫖落空的投机者';
+        sceneDesc='小猪想搭便车，却没能一直捞到肉——大猪中途罢工了。它白嫖落空、没人投喂，而且长期白嫖让能力退化，连自救的力气都没了。';
+        insights.push('白嫖退化','占优策略的反噬');
+      }
+      if(gSmall>gBig) insights.push('生死≠收益');
+    } else {
+      sceneTitle='一场僵局';
+      sceneDesc='局势陷入拉锯，最终以一方倒下告终。';
+      insights.push('交替破局');
+    }
+    html+='<p style="color:var(--text)">第 '+state.round+' 轮终局。'+(fallen?('『'+fallen+'』倒下了'):'两头猪力竭，同归于尽')+'。</p>';
+    html+='<div style="display:inline-block;margin:6px 0 10px;padding:5px 12px;border-radius:20px;background:rgba(232,200,106,.12);border:1px solid rgba(232,200,106,.3);color:var(--gold);letter-spacing:.04em">'+sceneTitle+'</div>';
+    html+='<p style="color:var(--text-soft)">'+sceneDesc+'</p>';
+    html+='<p style="color:var(--text-mut)">整局数据：大猪踩 <b style="color:var(--gold)">'+bigPct+'%</b>、小猪踩 <b style="color:var(--cyan)">'+smallPct+'%</b>；最长连续搭便车 大猪 '+maxRunB+' 轮、小猪 '+maxRunS+' 轮。能力 大猪 '+Math.round(capBig)+'、小猪 '+Math.round(capSmall)+'。</p>';
+    var gWinner = gBig>gSmall ? '大猪' : (gSmall>gBig ? '小猪' : '平局');
+    var gDiv = Math.abs(gBig-gSmall);
+    var totalG = gBig+gSmall||1;
+    var bigPctG = Math.round(gBig/totalG*100), smallPctG=100-bigPctG;
+    html+='<div style="margin-top:12px;padding:14px;border-radius:12px;background:rgba(232,200,106,.06);border:1px solid rgba(232,200,106,.25)">';
+    html+='<p style="margin:0 0 8px;color:var(--gold)">收益胜负</p>';
+    html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>大猪 <b style="color:var(--gold)">'+gBig+'</b> ('+bigPctG+'%)</span><span>小猪 <b style="color:var(--cyan)">'+gSmall+'</b> ('+smallPctG+'%)</span></div>';
+    html+='<div style="display:flex;height:16px;border-radius:20px;overflow:hidden;background:rgba(255,255,255,.06)"><div style="width:'+bigPctG+'%;background:linear-gradient(90deg,#8a6d1e,var(--gold))"></div><div style="width:'+smallPctG+'%;background:linear-gradient(90deg,#1e4a6e,var(--cyan))"></div></div>';
+    var verdict='';
+    if(fb&&fs){ verdict = gWinner==='平局' ? '两头猪同归，收益也打平——真正惨烈的平局。' : '两头都倒下，但'+gWinner+'在收益上留下了胜局——用命换来的赢。'; }
+    else if(gBig===gSmall){ verdict = '『'+state.winner+'』倒下了，但收益打平——辛苦一场，功亏一篑，谁也没赢。'; }
+    else {
+      var aliveWin = (state.winner==='大猪'&&gBig>gSmall)||(state.winner==='小猪'&&gSmall>gBig);
+      if(aliveWin) verdict = '『'+state.winner+'』虽倒下，却赢下了收益——悲壮的赢家。';
+      else verdict = '『'+state.winner+'』倒下，收益也落后——真正的完败。';
+    }
+    html+='<p style="margin:10px 0 0;color:var(--warn)">收益赢家：<b style="color:var(--text)">'+gWinner+'</b>'+(gWinner==='平局'?'，双方打平。':'，领先 '+gDiv+' 点。')+'</p>';
+    html+='<p style="margin:8px 0 0;color:var(--text)">综合判定：'+verdict+'</p>';
+    html+='</div>';
+    var insightMap=INSIGHT_MAP;
+    var sel='';
+    insights.forEach(function(k){
+      if(insightMap[k]) sel+='<div style="margin-top:12px;padding:14px;border-radius:12px;background:rgba(90,168,255,.07);border:1px solid var(--line)"><p style="margin:0 0 6px;color:var(--gold)">博弈论启示 · '+k+'</p><p style="margin:0;line-height:1.7;color:var(--text-soft)">'+insightMap[k]+'</p></div>';
+    });
+    html+=sel;
+    return html;
+  }
+
+  function pickWatch(side){
+    var e = side==='big' ? state.energy.big : state.energy.small;
+    if(e<=12) return 'wait';
+    if(side==='big'){
+      if(e<=30) return Math.random()<0.45 ? 'press' : 'wait';
+      return 'press';
+    }
+    var m=state.aiMode, run=0;
+    for(var i=state.history.length-1;i>=0&&state.history[i].smallAct==='wait';i--) run++;
+    if(m==='punish' && run>=2) return 'press';
+    if(m==='explore') return Math.random()<0.45 ? 'press' : 'wait';
+    return 'wait';
+  }
+
+  function watchStep(){
+    if(state.gameOver){ pauseWatch(); return; }
+    var bigAct=pickWatch('big');
+    var smallAct=pickWatch('small');
+    doRound(bigAct, smallAct, null, null);
+    pushInsight();
+  }
+
+  var watchTimer=null, watchSpeed=1500, lastInsKey=null;
+  function startWatch(){
+    state.mode='watch'; state.role=null;
+    state.aiMode=$('#ai-mode').value||'rational';
+    $('#intro').classList.add('hidden');
+    $('#role-pick').classList.add('hidden');
+    $('#controls').classList.add('hidden');
+    $('#act-press').disabled=true; $('#act-wait').disabled=true;
+    $('#watch-bar').classList.remove('hidden');
+    $('#insight-box').classList.remove('hidden');
+    $('#insight-box').innerHTML='<div class="watch-insight"><b>旁观开始</b> · 看两头猪怎么演化……你可以用下方对手风格切换小猪的策略。</div>';
+    lastInsKey=null;
+    save(); setPigPos(); renderScores(); renderTab(); startTimer();
+  }
+  function startTimer(){ if(watchTimer) clearInterval(watchTimer); watchTimer=setInterval(watchStep, watchSpeed); }
+  function pauseWatch(){ if(watchTimer){ clearInterval(watchTimer); watchTimer=null; } }
+  function resumeWatch(){ if(!watchTimer) startTimer(); }
+
+  var WATCH_INSIGHTS=[
+    {id:'dominant', t:'占优策略', f:function(){var h=state.history; if(!h.length)return false; var c=h[h.length-1]; return c.smallAct==='wait'&&c.bigAct==='press';}, s:'小猪又选了「搭便车」——单轮看这是最省力的选择，这就是占优策略。可它真能一直占便宜吗？'},
+    {id:'deadlock', t:'搭便车死锁', f:function(){for(var i=state.history.length-1;i>=0;i--){if(state.history[i].bigAct==='press')return false;} return state.history.length>=2;}, s:'大猪也开始罢工了——谁都不付出，谁都等著吃，最后一起饿。个人最优磨成了集体悲剧。'},
+    {id:'decay', t:'能力退化', f:function(){return state.cap.small<=30;}, s:'小猪长期白嫖，能力退化到 '+Math.round(state.cap.small)+'。它越依赖搭便车，越失去靠自己恢复的本事。'},
+    {id:'squeeze', t:'劳动被榨干', f:function(){var h=state.history; if(!h.length)return false; return h[h.length-1].bigAct==='press';}, s:'大猪又一次跑去踩踏板。真正该警惕的不是累死，是付出被当成理所当然。'}
+  ];
+  function pushInsight(){
+    var box=$('#insight-box'); if(!box||!state.last) return;
+    var hit=null;
+    for(var i=0;i<WATCH_INSIGHTS.length;i++){ if(WATCH_INSIGHTS[i].f()){ hit=WATCH_INSIGHTS[i]; break; } }
+    if(!hit || hit.id===lastInsKey) return;
+    lastInsKey=hit.id;
+    box.insertAdjacentHTML('afterbegin','<div class="watch-insight"><b>'+hit.t+'</b> · '+hit.s+'</div>');
+    while(box.children.length>6){ box.removeChild(box.lastChild); }
+  }
+
+  // ============ 洞察图鉴（收集系统） ============
+  var INSIGHT_MAP={
+    '承诺策略':'大猪用“绝不劳动”把自己绑死成不可逆，反而逼对方必须行动——因为它没得选。这就是承诺策略：<b style="color:var(--text)">力量不来自你有多少选项，而来自对方相信你会怎么做。</b>这一局等于演示了“如何用彻底的摆烂，反向绑架一个想做事的人”。',
+    '错维竞争':'大猪在收益上天生占优——这是刻进基因的先天优势，想在“钱”上赢它很难。但战场可以搬到另一个维度：<b style="color:var(--text)">体力与能力的账。</b>逼它一直劳动、消耗它，用“它赚钱、你省力”重新定义胜负。<b style="color:var(--text)">逆袭不是硬碰硬，是把战场搬到对方优势的反面。</b>',
+    '白嫖退化':'搭便车确实不扣体力，但它会<b style="color:var(--text)">废掉你的能力</b>——每次白嫖能力 -2，落空再 -5。能力越低，吃同样的肉恢复越少。这就是“白嫖会退化”的真相：<b style="color:var(--text)">你不劳动，看似省力，实则是在丧失靠自己恢复的本事。</b>一旦没人投喂，就彻底完了。',
+    '交替破局':'这套模型最残酷的教训是：<b style="color:var(--text)">完全理性会导向「大猪踩、小猪等」，但那个均衡是靠大猪单方面付出撑起来的，不可持续。</b>打破它的唯一办法是<b style="color:var(--text)">交替</b>——双方都愿意偶尔劳动、分摊成本，而不是死守各自的占优策略。系统才能长期跑下去。',
+    '劳动者被榨干':'这是典型的「过度付出被榨干」——用命换收益，却喂饱了一个不付出的搭便车者。<b style="color:var(--text)">真正该警惕的不是“累死”，是“你的付出被当成理所当然”。</b>劳动是义务还是选择，决定了会不会被榨干。',
+    '占优策略的反噬':'这一局证明：<b style="color:var(--text)">占优策略不是万能解。</b>“搭便车”在单轮里是最优，可在重复博弈里，当所有人都死守这个“最优”，它反而会崩塌成双输。<b style="color:var(--text)">个人最优，不等于集体最优。</b>这就是智猪博弈最深的讽刺。',
+    '生死≠收益':'倒下和输赢是两张正交的账。<b style="color:var(--text)">可能倒下了，却赢下了收益（悲壮）；也可能活着，却是惨胜甚至完败。</b>它逼你回答：到底想赢什么？活下去，还是赢下收益？这两个目标在博弈里常常互相冲突。',
+    '劳动者的错位':'这一局把力气用错了地方。<b style="color:var(--text)">努力本身不保证赢，努力用对战场才赢。</b>在最吃亏的维度（收益）上和大猪硬拼，等于拿自己的短板去撞对方的长板。'
+  };
+  var DEX=[
+    {id:'commit',icon:'🤝',title:'承诺策略',hint:'大猪几乎不劳动，却用它赢得了收益',cond:function(s){return s.winner==='大猪'&&s.bigPct<40&&s.gBig>s.gSmall;}},
+    {id:'wrongdim',icon:'⚔️',title:'错维竞争',hint:'在收益上和大猪硬拼，把力气用错战场',cond:function(s){return s.bigPct>=60||s.smallPct>=60;}},
+    {id:'decay',icon:'🍂',title:'白嫖退化',hint:'小猪长期白嫖，能力退化、自救无力',cond:function(s){return s.winner==='小猪'&&s.smallPct<60;}},
+    {id:'alternate',icon:'🔄',title:'交替破局',hint:'打破死锁——双输或收益打平',cond:function(s){return s.winner===null||s.gBig===s.gSmall;}},
+    {id:'squeeze',icon:'💧',title:'劳动者被榨干',hint:'大猪拼命踩踏板，却供养了全场',cond:function(s){return s.winner==='大猪'&&s.bigPct>=60;}},
+    {id:'backfire',icon:'⚠️',title:'占优策略的反噬',hint:'谁都死守最优，最后一起饿垮',cond:function(s){return s.winner===null;}},
+    {id:'lifedeath',icon:'⚖️',title:'生死≠收益',hint:'倒下的那一方，反而赢下了收益',cond:function(s){return (s.winner==='大猪'&&s.gBig>s.gSmall)||(s.winner==='小猪'&&s.gSmall>s.gBig);}},
+    {id:'misplaced',icon:'🎯',title:'劳动者的错位',hint:'小猪拼命去踩，却跑得慢、抢不过',cond:function(s){return s.winner==='小猪'&&s.smallPct>=60;}}
+  ];
+  function loadDex(){ try{ var a=JSON.parse(localStorage.getItem('pigArenaDex')||'[]'); return (Array.isArray(a)?a:[]); }catch(e){ return []; } }
+  function saveDex(){ try{ localStorage.setItem('pigArenaDex', JSON.stringify(state.dexUnlocked||[])); }catch(e){} }
+  function dexStats(){
+    var h=state.history, n=h.length||1, bp=0, sp=0;
+    h.forEach(function(x){ if(x.bigAct==='press')bp++; if(x.smallAct==='press')sp++; });
+    return { bigPct:Math.round(bp/n*100), smallPct:Math.round(sp/n*100), winner:state.winner, gBig:state.scores.big, gSmall:state.scores.small };
+  }
+  function checkUnlock(){
+    if(!state.gameOver) return;
+    var s=dexStats(), changed=false;
+    DEX.forEach(function(d){ if(state.dexUnlocked.indexOf(d.id)<0 && d.cond(s)){ state.dexUnlocked.push(d.id); changed=true; } });
+    if(changed){ saveDex(); updateDexBadge(); }
+  }
+  function updateDexBadge(){
+    var b=document.getElementById('dex-badge'); if(!b) return;
+    var n=(state.dexUnlocked||[]).length, total=DEX.length;
+    b.textContent=n+'/'+total;
+    b.className = (n>=total) ? 'dex-badge full' : 'dex-badge';
+  }
+  function buildDex(){
+    var n=(state.dexUnlocked||[]).length, total=DEX.length;
+    var html='<h4>洞察图鉴 <span style="color:var(--text-mut)">('+n+' / '+total+')</span></h4>';
+    html+='<p>每玩出一种结局，就点亮一条博弈论洞察。集齐全部，你就读懂了这间实验室的全部套路。</p>';
+    html+='<div class="dex-list">';
+    DEX.forEach(function(d){
+      var on=(state.dexUnlocked||[]).indexOf(d.id)>=0;
+      if(on){
+        html+='<div class="dex-item on"><div class="dex-head"><span class="dex-icon">'+d.icon+'</span><b>'+d.title+'</b></div><p>'+INSIGHT_MAP[d.title]+'</p></div>';
+      } else {
+        html+='<div class="dex-item off"><div class="dex-head"><span class="dex-icon">🔒</span><b>？？？</b></div><p class="dex-hint">'+d.hint+'</p></div>';
+      }
+    });
+    html+='</div>';
+    return html;
+  }
+  function renderTab(){
+    var active=$('.tabs button.active'); if(!active) active=$('.tabs button');
+    var tab=active.getAttribute('data-tab');
+    var body=$('#panel-body');
+    if(tab==='payoff') body.innerHTML=buildPayoff();
+    else if(tab==='detail') body.innerHTML=buildDetail();
+    else if(tab==='predict') body.innerHTML=buildPredict();
+    else if(tab==='outcome') body.innerHTML=buildOutcome();
+    else if(tab==='dex') body.innerHTML=buildDex();
+    else body.innerHTML=buildHistory();
+  }
+
+  function showGameOver(){
+    if(!state.gameOver){ $('#result-card').classList.add('hidden'); return; }
+    $('#act-press').disabled=true; $('#act-wait').disabled=true;
+    $('#controls').classList.add('hidden');
+    var ob=$('#tab-outcome'); if(ob){ ob.disabled=false; ob.classList.add('active'); }
+    root.querySelectorAll('.tabs button').forEach(function(x){ if(x!==ob) x.classList.remove('active'); });
+    if(state.challenge){ state.challengeDone=state.challenge.check(); }
+    if(!state.record || state.round>state.record.round){ state.record={round:state.round,winner:state.winner,big:state.scores.big,small:state.scores.small}; }
+    save();
+    updateChallengeUI();
+    $('#result-card').innerHTML=buildResultCard();
+    $('#result-card').classList.remove('hidden');
+    renderTab();
+  }
+
+  function doRound(bigAct, smallAct, playerAct, aiAct){
+    var r=MATRIX[bigAct+'-'+smallAct];
+    state.round++;
+    state.scores.big+=r.big; state.scores.small+=r.small;
+    state.runBig = (bigAct==='wait') ? state.runBig+1 : 0;
+    state.runSmall = (smallAct==='wait') ? state.runSmall+1 : 0;
+    state.last={round:state.round,playerAct:playerAct||null,aiAct:aiAct||null,bigAct:bigAct,smallAct:smallAct,bigGain:r.big,smallGain:r.small};
+    state.history.push(state.last);
+    applyRound(bigAct,smallAct,r.big,r.small);
+    if(state.energy.big<=0||state.energy.small<=0){
+      state.gameOver=true;
+      if(state.energy.big<=0&&state.energy.small<=0) state.winner=null;
+      else if(state.energy.big<=0) state.winner='大猪';
+      else state.winner='小猪';
+    }
+    save();
+    setPigPos(); renderScores(); renderTab(); showGameOver();
+    checkUnlock();
+  }
+
+  function afterMove(playerAct){
+    if(state.aiCool>0) state.aiCool--;
+    var aiAct=aiChoose();
+    var bigAct = state.role==='big'? playerAct : aiAct;
+    var smallAct = state.role==='small'? playerAct : aiAct;
+    doRound(bigAct, smallAct, playerAct, aiAct);
+  }
+
+  function reset(){
+    pauseWatch();
+    var oldRec=state.record;
+    state=defaultState(); state.aiMode=$('#ai-mode').value; state.record=oldRec; state.dexUnlocked=loadDex(); save();
+    $('#watch-bar').classList.add('hidden'); $('#insight-box').classList.add('hidden');
+    $('#role-pick').classList.add('hidden'); $('#controls').classList.add('hidden');
+    $('#intro').classList.remove('hidden');
+    $('#result-card').classList.add('hidden'); $('#result-card').innerHTML='';
+    $('#act-press').disabled=false; $('#act-wait').disabled=false;
+    $('#score-big').textContent='0'; $('#score-small').textContent='0';
+    $('#gain-big').textContent=''; $('#gain-small').textContent='';
+    $('#round').textContent='0';
+    var big=$('#pig-big'), small=$('#pig-small');
+    big.style.left='50px'; small.style.left='180px'; big.classList.remove('idle'); small.classList.remove('idle');
+    var ob=$('#tab-outcome'); if(ob){ ob.disabled=true; ob.classList.remove('active'); }
+    root.querySelectorAll('.tabs button').forEach(function(x){ if(x.getAttribute('data-tab')==='payoff'){x.classList.add('active');} else {x.classList.remove('active');} });
+    updateWeatherUI(); updateChallengeUI();
+    renderEnergy(); renderTab();
+  }
+
+  function bind(){
+    $('#intro-play').addEventListener('click',function(){
+      $('#intro').classList.add('hidden');
+      $('#role-pick').classList.remove('hidden');
+    });
+    $('#intro-watch').addEventListener('click',function(){
+      startWatch();
+    });
+    root.querySelectorAll('.role-btns button').forEach(function(b){
+      b.addEventListener('click',function(){
+        state.role=b.getAttribute('data-role');
+        setupWeather(); setupChallenge();
+        root.querySelectorAll('.role-btns button').forEach(function(x){x.classList.remove('active');});
+        b.classList.add('active');
+        save();
+        $('#role-pick').classList.add('hidden');
+        $('#controls').classList.remove('hidden');
+        setPigPos(); renderScores(); renderTab();
+      });
+    });
+    $('#act-press').addEventListener('click',function(){ if(!state.role||state.gameOver)return; afterMove('press'); });
+    $('#act-wait').addEventListener('click',function(){ if(!state.role||state.gameOver)return; afterMove('wait'); });
+    $('#btn-restart').addEventListener('click',reset);
+    $('#result-card').addEventListener('click',function(e){ if(e.target&&e.target.id==='btn-again'){ reset(); } });
+    $('#ai-mode').addEventListener('change',function(){ state.aiMode=this.value; save(); renderTab(); });
+    $('#watch-pause').addEventListener('click',pauseWatch);
+    $('#watch-resume').addEventListener('click',resumeWatch);
+    $('#watch-again').addEventListener('click',function(){ pauseWatch(); reset(); });
+    root.querySelectorAll('.tabs button').forEach(function(b){
+      b.addEventListener('click',function(){
+        root.querySelectorAll('.tabs button').forEach(function(x){x.classList.remove('active');});
+        b.classList.add('active'); renderTab();
+      });
+    });
+  }
+
+  bind(); setPigPos(); renderScores(); renderTab(); renderEnergy(); updateDexBadge();
+  updateWeatherUI(); updateChallengeUI();
+  if(state.role){ $('#intro').classList.add('hidden'); $('#role-pick').classList.add('hidden'); $('#controls').classList.remove('hidden'); setPigPos(); renderScores(); }
+  if(state.gameOver){ showGameOver(); }
+})();
+</script>
+</div>
+</body>
+</html>
