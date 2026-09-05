@@ -453,7 +453,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
   };
 
   function defaultState(){return {mode:'play',role:null,aiMode:'rational',round:0,scores:{big:0,small:0},energy:{big:100,small:100},cap:{big:50,small:50},runBig:0,runSmall:0,history:[],last:null,gameOver:false,winner:null,aiCool:0,weather:null,challenge:null,challengeDone:false,record:null};}
-  var VERSION='v1.3';
+  var VERSION='v1.4';
   var state=null;
   if(room&&room.getState){ state=room.getState(); if(!state||!state.hasOwnProperty('round')) state=defaultState(); 
     if(!state.energy){state.energy={big:100,small:100};} if(!state.cap){state.cap={big:50,small:50};} if(state.runBig===undefined){state.runBig=0;state.runSmall=0;} if(state.aiCool===undefined){state.aiCool=0;} if(!state.weather){state.weather=null;} if(!state.challenge){state.challenge=null;} if(state.record===undefined){state.record=null;} }
@@ -600,13 +600,13 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     var sceneTitle='', sceneDesc='', insights=[];
     if(fb&&fs){ sceneTitle='搭便车死锁'; sceneDesc='谁也不肯持续付出，谁都搭别人的便车，最后一起饿垮。'; insights=['交替破局','占优策略的反噬']; }
     else if(fallen==='大猪'){
-      if(gBig>gSmall && bigPct<40){ sceneTitle='用罢工换来的胜局'; sceneDesc='大猪几乎不劳动，却赢下收益——用“绝不踩”把自己绑死，逼小猪替它扛活。'; insights=['承诺策略']; }
-      else if(bigPct>=60){ sceneTitle='过度付出的牺牲者'; sceneDesc='大猪把大半精力耗在踏板上，供养全场却被持续白嫖，用命换来的收益填不饱别人的胃。'; insights=['劳动者被榨干','错维竞争']; }
+      if(bigPct>=60){ sceneTitle='过度付出的牺牲者'; sceneDesc='大猪把大半精力耗在踏板上，供养全场却被持续白嫖，用命换来的收益填不饱别人的胃。'; insights=['劳动者被榨干','错维竞争']; }
       else if(gBig===gSmall){ sceneTitle='辛苦一场的平局'; sceneDesc='大猪出力最多，收益却被小猪平摊，最后倒在均衡上。'; insights=['交替破局','劳动者被榨干']; }
       else { sceneTitle='吃力却输了的劳动者'; sceneDesc='大猪明明在踩踏板，收益却被吃掉，还倒在了付出上。'; insights=['劳动者被榨干','错维竞争']; }
     }
     else if(fallen==='小猪'){
-      if(smallPct>=60){ sceneTitle='吃力不讨好的追赶者'; sceneDesc='小猪拼命踩踏板却跑得慢、抢不过，成本全砸在自己身上。'; insights=['错维竞争','劳动者的错位']; }
+      if(gBig>gSmall && bigPct<40){ sceneTitle='用罢工换来的胜局'; sceneDesc='大猪几乎不劳动，却赢下收益——用“绝不踩”把自己绑死，逼小猪替它扛活。'; insights=['承诺策略']; }
+      else if(smallPct>=60){ sceneTitle='吃力不讨好的追赶者'; sceneDesc='小猪拼命踩踏板却跑得慢、抢不过，成本全砸在自己身上。'; insights=['错维竞争','劳动者的错位']; }
       else { sceneTitle='白嫖落空的投机者'; sceneDesc='小猪想搭便车却没捞到肉，大猪中途罢工，长期白嫖让它连自救的力气都没了。'; insights=['白嫖退化','占优策略的反噬']; }
       if(gSmall>gBig) insights.push('生死≠收益');
     }
@@ -785,11 +785,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
       sceneDesc='谁也不肯持续付出，谁都搭别人的便车，最后一起饿垮。这不是某一方的失败，是"合作崩塌"的集体悲剧。';
       insights.push('交替破局','占优策略的反噬');
     } else if(fallen==='大猪'){
-      if(gBig>gSmall && bigPct<40){
-        sceneTitle='用罢工换来的胜局';
-        sceneDesc='大猪几乎不劳动，却赢下了收益——它用"绝不踩"把自己绑死，逼小猪替它扛活。这是反向的承诺策略。';
-        insights.push('承诺策略');
-      } else if(bigPct>=60){
+      if(bigPct>=60){
         sceneTitle='过度付出的牺牲者';
         sceneDesc='大猪把大半精力耗在踩踏板上，供养全场，却被持续白嫖。它用命换来的收益，填不饱别人的胃，也救不回自己的血条。';
         insights.push('劳动者被榨干','错维竞争');
@@ -803,7 +799,11 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
         insights.push('劳动者被榨干','错维竞争');
       }
     } else if(fallen==='小猪'){
-      if(smallPct>=60){
+      if(gBig>gSmall && bigPct<40){
+        sceneTitle='用罢工换来的胜局';
+        sceneDesc='大猪几乎不劳动，却赢下了收益——它用"绝不踩"把自己绑死，逼小猪替它扛活。这是反向的承诺策略。';
+        insights.push('承诺策略');
+      } else if(smallPct>=60){
         sceneTitle='吃力不讨好的追赶者';
         sceneDesc='小猪拼命去踩踏板，却跑得慢、抢不过，成本全砸在自己身上，收益常被大猪吃掉。努力用错了战场，比不努力更惨。';
         insights.push('错维竞争','劳动者的错位');
@@ -824,8 +824,9 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     html+='<p style="color:var(--text-mut)">整局数据：大猪踩 <b style="color:var(--gold)">'+bigPct+'%</b>、小猪踩 <b style="color:var(--cyan)">'+smallPct+'%</b>；最长连续搭便车 大猪 '+maxRunB+' 轮、小猪 '+maxRunS+' 轮。能力 大猪 '+Math.round(capBig)+'、小猪 '+Math.round(capSmall)+'。</p>';
     var gWinner = gBig>gSmall ? '大猪' : (gSmall>gBig ? '小猪' : '平局');
     var gDiv = Math.abs(gBig-gSmall);
-    var totalG = gBig+gSmall||1;
-    var bigPctG = Math.round(gBig/totalG*100), smallPctG=100-bigPctG;
+    var totalG = Math.abs(gBig)+Math.abs(gSmall)||1;
+    var bigPctG = Math.round(Math.abs(gBig)/totalG*100);
+    var smallPctG = 100-bigPctG;
     html+='<div style="margin-top:12px;padding:14px;border-radius:12px;background:rgba(232,200,106,.06);border:1px solid rgba(232,200,106,.25)">';
     html+='<p style="margin:0 0 8px;color:var(--gold)">收益胜负</p>';
     html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>大猪 <b style="color:var(--gold)">'+gBig+'</b> ('+bigPctG+'%)</span><span>小猪 <b style="color:var(--cyan)">'+gSmall+'</b> ('+smallPctG+'%)</span></div>';
@@ -918,7 +919,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     '劳动者的错位':'这一局把力气用错了地方。<b style="color:var(--text)">努力本身不保证赢，努力用对战场才赢。</b>在最吃亏的维度（收益）上和大猪硬拼，等于拿自己的短板去撞对方的长板。'
   };
   var DEX=[
-    {id:'commit',icon:'🤝',title:'承诺策略',hint:'大猪几乎不劳动，却用它赢得了收益',cond:function(s){return s.winner==='大猪'&&s.bigPct<40&&s.gBig>s.gSmall;}},
+    {id:'commit',icon:'🤝',title:'承诺策略',hint:'大猪几乎不劳动，却用它赢得了收益',cond:function(s){return s.winner==='小猪'&&s.bigPct<40&&s.gBig>s.gSmall;}},
     {id:'wrongdim',icon:'⚔️',title:'错维竞争',hint:'在收益上和大猪硬拼，把力气用错战场',cond:function(s){return s.bigPct>=60||s.smallPct>=60;}},
     {id:'decay',icon:'🍂',title:'白嫖退化',hint:'小猪长期白嫖，能力退化、自救无力',cond:function(s){return s.winner==='小猪'&&s.smallPct<60;}},
     {id:'alternate',icon:'🔄',title:'交替破局',hint:'打破死锁——双输或收益打平',cond:function(s){return s.winner===null||s.gBig===s.gSmall;}},
