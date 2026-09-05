@@ -406,7 +406,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     <option value="punish">睚眦必报</option>
   </select>
 </div>
-<div class="watermark">作者 · 灵魂大宗师</div>
+<div class="watermark">灵魂大宗师 · <span id="ver"></span></div>
 
 <script>
 (function(){
@@ -422,6 +422,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
   };
 
   function defaultState(){return {mode:'play',role:null,aiMode:'rational',round:0,scores:{big:0,small:0},energy:{big:100,small:100},cap:{big:50,small:50},runBig:0,runSmall:0,history:[],last:null,gameOver:false,winner:null,aiCool:0,weather:null,challenge:null,challengeDone:false,record:null};}
+  var VERSION='v1.1';
   var state=null;
   if(room&&room.getState){ state=room.getState(); if(!state||!state.hasOwnProperty('round')) state=defaultState(); 
     if(!state.energy){state.energy={big:100,small:100};} if(!state.cap){state.cap={big:50,small:50};} if(state.runBig===undefined){state.runBig=0;state.runSmall=0;} if(state.aiCool===undefined){state.aiCool=0;} if(!state.weather){state.weather=null;} if(!state.challenge){state.challenge=null;} if(state.record===undefined){state.record=null;} }
@@ -627,7 +628,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     }
     html+='<p class="rc-quote">“'+RESULT_QUOTES[g.rank]+'”</p>';
     html+='<div class="rc-foot"><button id="btn-again" class="act-btn press">再来一局</button></div>';
-    html+='<div class="rc-sig">—— 灵魂大宗师 · 洞察图鉴 '+(state.dexUnlocked||[]).length+'/8 ——</div>';
+    html+='<div class="rc-sig">—— 灵魂大宗师 · 洞察图鉴 '+(state.dexUnlocked||[]).length+'/8 · '+VERSION+' ——</div>';
     html+='</div>';
     return html;
   }
@@ -1042,6 +1043,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
   }
 
   bind(); setPigPos(); renderScores(); renderTab(); renderEnergy(); updateDexBadge();
+  var v=$('#ver'); if(v) v.textContent=VERSION;
   updateWeatherUI(); updateChallengeUI();
   if(state.role){ $('#intro').classList.add('hidden'); $('#role-pick').classList.add('hidden'); $('#controls').classList.remove('hidden'); setPigPos(); renderScores(); }
   if(state.gameOver){ showGameOver(); }
