@@ -221,6 +221,13 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
 .achieve-btn{margin-top:20px; width:100%; padding:13px; font-size:16px; font-weight:800; border-radius:12px; border:1px solid rgba(255,207,122,.65); background:linear-gradient(90deg,#8a6518,#c89434); color:#1a1204; cursor:pointer; letter-spacing:.12em; box-shadow:0 4px 18px rgba(255,180,60,.25);}
 .achieve-btn:hover{filter:brightness(1.12);}
 .achieve-btn:active{transform:translateY(1px);}
+.dex-complete{display:flex; align-items:center; gap:12px; margin:12px 0 4px; padding:14px; border-radius:14px; background:linear-gradient(135deg,rgba(255,207,122,.14),rgba(255,180,60,.05)); border:1px solid rgba(255,207,122,.45); box-shadow:0 0 20px rgba(255,180,60,.12);}
+.dc-icon{font-size:34px; line-height:1;}
+.dc-body{flex:1; min-width:0;}
+.dc-body b{color:var(--gold); font-size:15px;}
+.dc-body p{margin:4px 0 0; font-size:12px; color:var(--text-mut); line-height:1.5;}
+.dc-btn{flex-shrink:0; padding:8px 14px; font-size:13px; font-weight:700; border-radius:10px; border:1px solid rgba(255,207,122,.6); background:linear-gradient(90deg,#8a6518,#c89434); color:#1a1204; cursor:pointer; letter-spacing:.05em;}
+.dc-btn:hover{filter:brightness(1.1);}
 .role-btns button.active{transform:translateY(-2px);}
 .role-btns button[data-role="big"].active{border-color:var(--gold); box-shadow:0 0 18px rgba(232,200,106,.3);}
 .role-btns button[data-role="small"].active{border-color:var(--cyan); box-shadow:0 0 18px rgba(127,216,255,.3);}
@@ -453,7 +460,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
   };
 
   function defaultState(){return {mode:'play',role:null,aiMode:'rational',round:0,scores:{big:0,small:0},energy:{big:100,small:100},cap:{big:50,small:50},runBig:0,runSmall:0,history:[],last:null,gameOver:false,winner:null,aiCool:0,weather:null,challenge:null,challengeDone:false,record:null};}
-  var VERSION='v1.5';
+  var VERSION='v1.6';
   var state=null;
   if(room&&room.getState){ state=room.getState(); if(!state||!state.hasOwnProperty('round')) state=defaultState(); 
     if(!state.energy){state.energy={big:100,small:100};} if(!state.cap){state.cap={big:50,small:50};} if(state.runBig===undefined){state.runBig=0;state.runSmall=0;} if(state.aiCool===undefined){state.aiCool=0;} if(!state.weather){state.weather=null;} if(!state.challenge){state.challenge=null;} if(state.record===undefined){state.record=null;} }
@@ -950,8 +957,12 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     var games=parseInt(localStorage.getItem('pigArenaGames')||'0',10)+1;
     try{ localStorage.setItem('pigArenaGames', String(games)); }catch(e){}
     if((state.dexUnlocked||[]).length>=DEX.length && !localStorage.getItem('pigArenaDexComplete')){
-      try{ localStorage.setItem('pigArenaDexComplete','1'); }catch(e){}
-      showAchievement(games);
+      try{
+        localStorage.setItem('pigArenaDexComplete','1');
+        var dd=new Date();
+        localStorage.setItem('pigArenaDexDate', dd.getFullYear()+'.'+String(dd.getMonth()+1).padStart(2,'0')+'.'+String(dd.getDate()).padStart(2,'0'));
+      }catch(e){}
+      showAchievement();
     }
   }
   function updateDexBadge(){
@@ -963,6 +974,9 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
   function buildDex(){
     var n=(state.dexUnlocked||[]).length, total=DEX.length;
     var html='<h4>洞察图鉴 <span style="color:var(--text-mut)">('+n+' / '+total+')</span></h4>';
+    if(n>=total){
+      html+='<div class="dex-complete"><div class="dc-icon">🏆</div><div class="dc-body"><b>全图鉴集齐 · 成就达成</b><p>你已点亮全部 8 条洞察，读懂了智猪博弈的所有套路。</p><button class="dc-btn" id="btn-view-achieve">回看成就展</button></div></div>';
+    }
     html+='<p>每玩出一种结局，就点亮一条博弈论洞察。集齐全部，你就读懂了这间实验室的全部套路。</p>';
     html+='<div class="dex-list">';
     DEX.forEach(function(d){
@@ -976,12 +990,12 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     html+='</div>';
     return html;
   }
-  function showAchievement(games){
+  function showAchievement(){
     var icons=DEX.map(function(d){ return '<span>'+d.icon+'</span>'; }).join('');
     $('#achieve-icons').innerHTML=icons;
-    var d=new Date();
-    var date=d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');
-    $('#achieve-meta').textContent='成就称号：灵魂大宗师 · 历经 '+games+' 局 · '+date;
+    var games=parseInt(localStorage.getItem('pigArenaGames')||'0',10);
+    var date=localStorage.getItem('pigArenaDexDate')||'';
+    $('#achieve-meta').textContent='成就称号：博弈宗师 · 历经 '+games+' 局'+(date?' · '+date:'');
     $('#achieve-overlay').classList.remove('hidden');
   }
   function renderTab(){
@@ -1084,6 +1098,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     $('#btn-restart').addEventListener('click',reset);
     $('#result-card').addEventListener('click',function(e){ if(e.target&&e.target.id==='btn-again'){ reset(); } });
     $('#achieve-btn').addEventListener('click',function(){ $('#achieve-overlay').classList.add('hidden'); });
+    $('#panel-body').addEventListener('click',function(e){ if(e.target && e.target.id==='btn-view-achieve'){ showAchievement(); } });
     $('#ai-mode').addEventListener('change',function(){ state.aiMode=this.value; save(); renderTab(); });
     $('#watch-pause').addEventListener('click',pauseWatch);
     $('#watch-resume').addEventListener('click',resumeWatch);
