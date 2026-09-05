@@ -453,7 +453,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
   };
 
   function defaultState(){return {mode:'play',role:null,aiMode:'rational',round:0,scores:{big:0,small:0},energy:{big:100,small:100},cap:{big:50,small:50},runBig:0,runSmall:0,history:[],last:null,gameOver:false,winner:null,aiCool:0,weather:null,challenge:null,challengeDone:false,record:null};}
-  var VERSION='v1.2';
+  var VERSION='v1.3';
   var state=null;
   if(room&&room.getState){ state=room.getState(); if(!state||!state.hasOwnProperty('round')) state=defaultState(); 
     if(!state.energy){state.energy={big:100,small:100};} if(!state.cap){state.cap={big:50,small:50};} if(state.runBig===undefined){state.runBig=0;state.runSmall=0;} if(state.aiCool===undefined){state.aiCool=0;} if(!state.weather){state.weather=null;} if(!state.challenge){state.challenge=null;} if(state.record===undefined){state.record=null;} }
@@ -544,8 +544,8 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
   var CHALLENGES=[
     {id:'survive',text:'撑过 15 轮不倒',check:function(){return state.round>=15;}},
     {id:'lead',text:'终局时你的收益领先',check:function(){var me=state.role==='big'?state.scores.big:state.scores.small,oth=state.role==='big'?state.scores.small:state.scores.big; return state.gameOver&&me>oth;}},
-    {id:'flip',text:'让大猪先倒下',check:function(){return state.winner==='小猪';}},
-    {id:'pigwin',text:'让小猪先倒下',check:function(){return state.winner==='大猪';}}
+    {id:'flip',text:'让大猪先倒下',check:function(){return state.winner==='大猪';}},
+    {id:'pigwin',text:'让小猪先倒下',check:function(){return state.winner==='小猪';}}
   ];
   function newChallenge(){ return CHALLENGES[Math.floor(Math.random()*CHALLENGES.length)]; }
   function updateChallengeUI(){
