@@ -532,17 +532,22 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     var me = state.role;
     if(me){
       var myDead = me==='big' ? fb : fs;
+      var oppDead = me==='big' ? fs : fb;
       var isTie = !winSide;
       var iWin = winSide===me;
       if(myDead){
-        if(isTie) return {rank:'B', name:'平局', slogan:'同归于尽，收益也打平'};
+        if(oppDead){
+          if(isTie) return {rank:'B', name:'平局', slogan:'同归于尽，收益也打平'};
+          if(iWin) return {rank:'A', name:'悲壮', slogan:'同归于尽，你却赢下了收益'};
+          return {rank:'D', name:'完败', slogan:'同归于尽，收益也输了'};
+        }
+        if(isTie) return {rank:'B', name:'平局', slogan:'你倒下了，但收益打平'};
         if(iWin) return {rank:'A', name:'悲壮', slogan:'你倒下了，却赢下了收益'};
         return {rank:'D', name:'完败', slogan:'你倒下，收益也输了'};
-      } else {
-        if(isTie) return {rank:'B', name:'平局', slogan:'你活下来，但谁也没赢'};
-        if(iWin) return {rank:'S', name:'完胜', slogan:'你活着，还赢了收益'};
-        return {rank:'C', name:'惜败', slogan:'你活着，却输了收益'};
       }
+      if(isTie) return {rank:'B', name:'平局', slogan:'你活下来，但谁也没赢'};
+      if(iWin) return {rank:'S', name:'完胜', slogan:'你活着，还赢了收益'};
+      return {rank:'C', name:'惜败', slogan:'你活着，却输了收益'};
     }
     if(fb&&fs) return {rank:'D', name:'双输', slogan:'同归于尽'};
     if(!winSide) return {rank:'B', name:'平局', slogan:'功亏一篑'};
