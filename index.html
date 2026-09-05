@@ -205,6 +205,22 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
 .result-card .rc-foot button{flex:1; min-height:50px;}
 .result-card .rc-sig{text-align:center; font-size:13px; color:var(--text-mut); opacity:.6; letter-spacing:.12em;}
 .watermark{position:absolute; right:14px; bottom:12px; font-size:13px; color:var(--text-mut); opacity:.55; pointer-events:none; letter-spacing:.08em; z-index:1;}
+.achieve-overlay{position:fixed; inset:0; background:rgba(3,5,12,.9); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; z-index:999; padding:20px; box-sizing:border-box;}
+.achieve-overlay.hidden{display:none;}
+.achieve-card{position:relative; width:100%; max-width:420px; background:linear-gradient(165deg,#1c1507 0%,#0e0a03 100%); border:1px solid rgba(255,207,122,.45); border-radius:20px; padding:30px 22px 22px; text-align:center; box-shadow:0 0 70px rgba(255,180,60,.28), inset 0 0 44px rgba(255,180,60,.05); animation:achIn .55s cubic-bezier(.2,.9,.3,1.25);}
+@keyframes achIn{from{transform:scale(.68); opacity:0;} to{transform:scale(1); opacity:1;}}
+.achieve-badge{font-size:66px; line-height:1; animation:achPulse 2s ease-in-out infinite; filter:drop-shadow(0 0 16px rgba(255,200,80,.85));}
+@keyframes achPulse{0%,100%{transform:scale(1);} 50%{transform:scale(1.12);}}
+.achieve-kicker{margin-top:12px; font-size:12px; letter-spacing:.35em; color:var(--warn); font-weight:700;}
+.achieve-title{margin-top:8px; font-size:26px; font-weight:800; background:linear-gradient(90deg,#ffe9a8,#ffb84d 50%,#ffe9a8); -webkit-background-clip:text; background-clip:text; color:transparent; letter-spacing:.02em;}
+.achieve-sub{margin-top:10px; font-size:14px; color:var(--text-mut); letter-spacing:.06em;}
+.achieve-icons{margin-top:18px; display:grid; grid-template-columns:repeat(4, 48px); gap:10px; justify-content:center;}
+.achieve-icons span{font-size:24px; width:48px; height:48px; line-height:48px; border-radius:12px; background:rgba(255,207,122,.09); border:1px solid rgba(255,207,122,.28); box-shadow:0 0 12px rgba(255,180,60,.12);}
+.achieve-quote{margin-top:18px; font-size:15px; color:var(--text); font-weight:600; line-height:1.55; letter-spacing:.02em;}
+.achieve-meta{margin-top:12px; font-size:12px; color:var(--text-mut); letter-spacing:.08em;}
+.achieve-btn{margin-top:20px; width:100%; padding:13px; font-size:16px; font-weight:800; border-radius:12px; border:1px solid rgba(255,207,122,.65); background:linear-gradient(90deg,#8a6518,#c89434); color:#1a1204; cursor:pointer; letter-spacing:.12em; box-shadow:0 4px 18px rgba(255,180,60,.25);}
+.achieve-btn:hover{filter:brightness(1.12);}
+.achieve-btn:active{transform:translateY(1px);}
 .role-btns button.active{transform:translateY(-2px);}
 .role-btns button[data-role="big"].active{border-color:var(--gold); box-shadow:0 0 18px rgba(232,200,106,.3);}
 .role-btns button[data-role="small"].active{border-color:var(--cyan); box-shadow:0 0 18px rgba(127,216,255,.3);}
@@ -250,6 +266,8 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
   .result-card .rc-side .sc{font-size:28px;}
   .result-card .rc-rank{width:64px; height:64px; font-size:30px;}
   .result-card .rc-sub{font-size:14px;}
+  .achieve-card{max-width:92vw; padding:26px 16px 18px;}
+  .achieve-title{font-size:23px;}
   .tabs{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; gap:4px; padding-bottom:10px;}
   .tabs button{white-space:nowrap; flex:0 0 auto; font-size:14px; padding:11px 13px;}
   .payoff-table{font-size:14px;}
@@ -408,6 +426,19 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
 </div>
 <div class="watermark">灵魂大宗师 · <span id="ver"></span></div>
 
+<div class="achieve-overlay hidden" id="achieve-overlay">
+  <div class="achieve-card">
+    <div class="achieve-badge">🏆</div>
+    <div class="achieve-kicker">★ 成就达成 ★</div>
+    <div class="achieve-title">洞察全图鉴 · 集齐</div>
+    <div class="achieve-sub">8 / 8 条博弈论洞察 全部点亮</div>
+    <div class="achieve-icons" id="achieve-icons"></div>
+    <div class="achieve-quote">「你已读懂智猪博弈的全部套路」</div>
+    <div class="achieve-meta" id="achieve-meta"></div>
+    <button class="achieve-btn" id="achieve-btn">收下成就 🎉</button>
+  </div>
+</div>
+
 <script>
 (function(){
   var root=document.getElementById('game-root');
@@ -422,7 +453,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
   };
 
   function defaultState(){return {mode:'play',role:null,aiMode:'rational',round:0,scores:{big:0,small:0},energy:{big:100,small:100},cap:{big:50,small:50},runBig:0,runSmall:0,history:[],last:null,gameOver:false,winner:null,aiCool:0,weather:null,challenge:null,challengeDone:false,record:null};}
-  var VERSION='v1.1';
+  var VERSION='v1.2';
   var state=null;
   if(room&&room.getState){ state=room.getState(); if(!state||!state.hasOwnProperty('round')) state=defaultState(); 
     if(!state.energy){state.energy={big:100,small:100};} if(!state.cap){state.cap={big:50,small:50};} if(state.runBig===undefined){state.runBig=0;state.runSmall=0;} if(state.aiCool===undefined){state.aiCool=0;} if(!state.weather){state.weather=null;} if(!state.challenge){state.challenge=null;} if(state.record===undefined){state.record=null;} }
@@ -908,6 +939,12 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     var s=dexStats(), changed=false;
     DEX.forEach(function(d){ if(state.dexUnlocked.indexOf(d.id)<0 && d.cond(s)){ state.dexUnlocked.push(d.id); changed=true; } });
     if(changed){ saveDex(); updateDexBadge(); }
+    var games=parseInt(localStorage.getItem('pigArenaGames')||'0',10)+1;
+    try{ localStorage.setItem('pigArenaGames', String(games)); }catch(e){}
+    if((state.dexUnlocked||[]).length>=DEX.length && !localStorage.getItem('pigArenaDexComplete')){
+      try{ localStorage.setItem('pigArenaDexComplete','1'); }catch(e){}
+      showAchievement(games);
+    }
   }
   function updateDexBadge(){
     var b=document.getElementById('dex-badge'); if(!b) return;
@@ -930,6 +967,14 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     });
     html+='</div>';
     return html;
+  }
+  function showAchievement(games){
+    var icons=DEX.map(function(d){ return '<span>'+d.icon+'</span>'; }).join('');
+    $('#achieve-icons').innerHTML=icons;
+    var d=new Date();
+    var date=d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');
+    $('#achieve-meta').textContent='成就称号：灵魂大宗师 · 历经 '+games+' 局 · '+date;
+    $('#achieve-overlay').classList.remove('hidden');
   }
   function renderTab(){
     var active=$('.tabs button.active'); if(!active) active=$('.tabs button');
@@ -1030,6 +1075,7 @@ body{min-height:100vh; display:flex; justify-content:center; padding:10px 8px; b
     $('#act-wait').addEventListener('click',function(){ if(!state.role||state.gameOver)return; afterMove('wait'); });
     $('#btn-restart').addEventListener('click',reset);
     $('#result-card').addEventListener('click',function(e){ if(e.target&&e.target.id==='btn-again'){ reset(); } });
+    $('#achieve-btn').addEventListener('click',function(){ $('#achieve-overlay').classList.add('hidden'); });
     $('#ai-mode').addEventListener('change',function(){ state.aiMode=this.value; save(); renderTab(); });
     $('#watch-pause').addEventListener('click',pauseWatch);
     $('#watch-resume').addEventListener('click',resumeWatch);
